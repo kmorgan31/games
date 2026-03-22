@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mirror Words</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #ffffff; --bg2: #f5f5f3; --bg3: #efefec;
+    --text: #1a1a18; --text2: #6b6b67; --text3: #9b9b96;
+    --border: rgba(0,0,0,0.12); --border2: rgba(0,0,0,0.22);
+    --radius: 8px; --radius-lg: 12px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1c1a; --bg2: #272724; --bg3: #303030;
+      --text: #f0f0ec; --text2: #9b9b96; --text3: #6b6b67;
+      --border: rgba(255,255,255,0.12); --border2: rgba(255,255,255,0.22);
+    }
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; align-items: flex-start; justify-content: center; padding: 2rem 1rem; }
+  #app { width: 100%; max-width: 460px; }
+  #game-area { display: none; }
+  #start-screen { text-align: center; padding: 2rem 0; }
+  .title { font-size: 30px; font-weight: 600; letter-spacing: -0.5px; margin-bottom: 4px; }
+  .subtitle { font-size: 14px; color: var(--text2); margin-bottom: 2rem; }
+  .mirror-demo { font-size: 20px; letter-spacing: 3px; font-weight: 600; margin-bottom: 6px; }
+  .mirror-arrow { font-size: 13px; color: var(--text3); margin-bottom: 2rem; }
+  .info-box { background: var(--bg2); border-radius: var(--radius-lg); padding: 1rem 1.25rem; margin-bottom: 2rem; text-align: left; }
+  .info-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text2); margin-bottom: 7px; }
+  .info-row:last-child { margin-bottom: 0; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text3); flex-shrink: 0; }
+  .dot.g { background: #3B6D11; } .dot.a { background: #BA7517; } .dot.r { background: #A32D2D; }
+  .meta-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; }
+  .stat-pill { background: var(--bg2); border-radius: var(--radius); padding: 6px 12px; font-size: 13px; color: var(--text2); }
+  .stat-pill span { font-weight: 600; color: var(--text); transition: color 0.2s; }
+  .flash-green { color: #3B6D11 !important; } .flash-amber { color: #BA7517 !important; }
+  .clue-card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1.25rem; }
+  .clue-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+  .clue-text { font-size: 18px; font-weight: 600; }
+  .clue-extra { font-size: 13px; color: var(--text2); margin-top: 4px; }
+  .slots-wrap { display: flex; gap: 6px; margin-bottom: 1rem; justify-content: center; flex-wrap: wrap; }
+  .letter-slot { width: 46px; height: 52px; border: 0.5px solid var(--border); border-radius: var(--radius); display: flex; align-items: center; justify-content: center; font-size: 21px; font-weight: 600; background: var(--bg); }
+  .letter-slot.filled { border-color: var(--border2); }
+  .letter-slot.correct { background: #EAF3DE; border-color: #639922; color: #3B6D11; }
+  .letter-slot.wrong { background: #FCEBEB; border-color: #E24B4A; color: #A32D2D; }
+  .letter-slot.hinted { background: #FAEEDA; border-color: #BA7517; color: #854F0B; }
+  #answer-input {
+    display: block; width: 100%; height: 48px;
+    font-size: 18px; font-family: inherit;
+    font-weight: 600; letter-spacing: 4px; text-align: center; text-transform: uppercase;
+    background: var(--bg); color: var(--text);
+    border: 0.5px solid var(--border2);
+    border-radius: var(--radius);
+    outline: none; padding: 0 12px;
+    margin-bottom: 1rem;
+  }
+  #answer-input:focus { border-color: var(--text3); }
+  .potential-score { font-size: 12px; color: var(--text3); text-align: center; margin-bottom: 1rem; }
+  .potential-score span { font-weight: 600; color: var(--text2); }
+  .potential-score.zeroed, .potential-score.zeroed span { color: #A32D2D; }
+  .hint-action-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+  #hint-btn { height: 36px; padding: 0 14px; border-radius: var(--radius); border: 0.5px solid #BA7517; background: #FAEEDA; color: #854F0B; font-size: 13px; font-weight: 600; cursor: pointer; }
+  #hint-btn:hover { background: #FAC775; }
+  #hint-btn:disabled { opacity: 0.4; cursor: default; }
+  .hint-cost { font-size: 12px; color: var(--text3); }
+  .hint-cost span { color: #BA7517; font-weight: 600; }
+  .feedback { font-size: 14px; min-height: 20px; margin-bottom: 1rem; color: var(--text2); text-align: center; }
+  .feedback.correct { color: #3B6D11; } .feedback.wrong { color: #A32D2D; }
+  .feedback.hint { color: #BA7517; } .feedback.zero { color: #A32D2D; }
+  .progress-bar-wrap { background: var(--bg2); border-radius: 4px; height: 4px; margin-bottom: 1.5rem; overflow: hidden; }
+  .progress-bar-fill { height: 4px; border-radius: 4px; background: #639922; transition: width 0.4s ease; }
+  .skip-row { text-align: center; }
+  .skip-btn { background: none; border: none; font-size: 13px; color: var(--text3); cursor: pointer; padding: 4px 8px; }
+  .skip-btn:hover { color: var(--text2); }
+  #end-screen { display: none; text-align: center; padding: 2rem 0; }
+  .score-big { font-size: 54px; font-weight: 700; line-height: 1; margin-bottom: 4px; }
+  .score-label { font-size: 14px; color: var(--text2); margin-bottom: 2rem; }
+  .results-list { text-align: left; margin-bottom: 2rem; }
+  .result-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 0.5px solid var(--border); font-size: 14px; gap: 8px; }
+  .result-word { font-weight: 600; }
+  .result-clue { color: var(--text2); font-size: 13px; }
+  .result-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+  .result-pts { font-size: 13px; font-weight: 600; color: var(--text2); }
+  .result-badge { font-size: 12px; padding: 3px 8px; border-radius: var(--radius); white-space: nowrap; }
+  .badge-got { background: #EAF3DE; color: #3B6D11; }
+  .badge-hinted { background: #FAEEDA; color: #854F0B; }
+  .badge-zero { background: #FCEBEB; color: #A32D2D; }
+  .badge-missed { background: var(--bg2); color: var(--text2); }
+  button.primary { height: 48px; padding: 0 32px; border-radius: var(--radius); border: 0.5px solid var(--border2); background: var(--bg); color: var(--text); font-size: 16px; font-weight: 600; cursor: pointer; }
+  button.primary:hover { background: var(--bg2); }
+  button.secondary { height: 44px; padding: 0 28px; border-radius: var(--radius); border: 0.5px solid var(--border); background: var(--bg); color: var(--text); font-size: 15px; font-weight: 600; cursor: pointer; }
+  button.secondary:hover { background: var(--bg2); }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="start-screen">
+    <div class="title">Mirror Words</div>
+    <div class="subtitle">Find words that read the same both ways</div>
+    <div class="mirror-demo">R A C E C A R</div>
+    <div class="mirror-arrow">forward = backward</div>
+    <div class="info-box">
+      <div class="info-row"><div class="dot g"></div> Correct answer = +10 points</div>
+      <div class="info-row"><div class="dot a"></div> Each hint reveals the next letter = −1 pt immediately</div>
+      <div class="info-row"><div class="dot r"></div> Reveal past the halfway point = word worth 0 pts</div>
+      <div class="info-row"><div class="dot"></div> Skip with no penalty</div>
+    </div>
+    <button class="primary" onclick="startGame()">Play</button>
+  </div>
+
+  <div id="game-area">
+    <div class="meta-row">
+      <div class="stat-pill">Round <span id="round-num">1</span> / <span id="total-num">8</span></div>
+      <div class="stat-pill">Score <span id="score-num">0</span></div>
+    </div>
+    <div class="progress-bar-wrap"><div class="progress-bar-fill" id="progress-fill" style="width:0%"></div></div>
+    <div class="clue-card">
+      <div class="clue-label">Clue</div>
+      <div class="clue-text" id="clue-text"></div>
+      <div class="clue-extra" id="clue-extra"></div>
+    </div>
+    <div class="slots-wrap" id="letter-slots"></div>
+    <input id="answer-input" type="text"
+      autocomplete="off" autocorrect="off" autocapitalize="characters"
+      spellcheck="false" inputmode="text" placeholder="type here" />
+    <div class="potential-score" id="potential-score-row">This word worth <span id="word-value">10</span> pts</div>
+    <div class="hint-action-row">
+      <button id="hint-btn" onclick="revealHint()">Reveal next letter</button>
+      <div class="hint-cost">−1 pt per hint &middot; <span id="hints-used">0</span> used this word</div>
+    </div>
+    <div class="feedback" id="feedback"></div>
+    <div class="skip-row">
+      <button class="skip-btn" onclick="skipWord()">Skip this one →</button>
+    </div>
+  </div>
+
+  <div id="end-screen">
+    <div class="score-big" id="final-score"></div>
+    <div class="score-label" id="final-label"></div>
+    <div class="results-list" id="results-list"></div>
+    <button class="secondary" onclick="restartGame()">Play again</button>
+  </div>
+</div>
+
+<script>
+const PUZZLES = [
+  { word: "RACECAR", clue: "A high-speed vehicle on the track", extra: "7 letters" },
+  { word: "LEVEL", clue: "Perfectly flat and even", extra: "5 letters" },
+  { word: "CIVIC", clue: "Relating to a city or its citizens", extra: "5 letters" },
+  { word: "RADAR", clue: "A system that detects objects using radio waves", extra: "5 letters" },
+  { word: "NOON", clue: "The middle of the day", extra: "4 letters" },
+  { word: "KAYAK", clue: "A narrow boat you paddle", extra: "5 letters" },
+  { word: "REFER", clue: "To direct someone to another source", extra: "5 letters" },
+  { word: "MADAM", clue: "A polite term for a woman", extra: "5 letters" },
+  { word: "TENET", clue: "A core belief or principle", extra: "5 letters" },
+  { word: "REPAPER", clue: "To put new wallpaper on walls", extra: "7 letters" },
+  { word: "MOM", clue: "She raised you", extra: "3 letters" },
+  { word: "DAD", clue: "Father figure", extra: "3 letters" },
+  { word: "POP", clue: "A fizzy drink — or another word for dad", extra: "3 letters" },
+  { word: "EWE", clue: "A female sheep", extra: "3 letters" },
+  { word: "ROTATOR", clue: "Something that spins around an axis", extra: "7 letters" },
+];
+
+let queue=[], current=0, totalScore=0, results=[];
+let hintsUsed=0, revealedIndices=[], wordValue=10, wordZeroed=false;
+
+const inp = document.getElementById('answer-input');
+
+function shuffle(a){const b=[...a];for(let i=b.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[b[i],b[j]]=[b[j],b[i]];}return b;}
+function halfwayThreshold(n){return Math.ceil(n/2);}
+
+inp.addEventListener('input', function(){
+  const p=queue[current]; if(!p) return;
+  const maxLen=p.word.length-revealedIndices.length;
+  let val=this.value.replace(/[^a-zA-Z]/g,'').toUpperCase().slice(0,maxLen);
+  this.value=val;
+  renderSlots(val);
+  if(val.length===maxLen) setTimeout(checkAnswer,80);
+});
+
+inp.addEventListener('keydown', function(e){
+  if(e.key==='Enter') checkAnswer();
+});
+
+function startGame(){
+  queue=shuffle(PUZZLES).slice(0,8);
+  current=0; totalScore=0; results=[];
+  document.getElementById('start-screen').style.display='none';
+  document.getElementById('end-screen').style.display='none';
+  document.getElementById('game-area').style.display='block';
+  loadPuzzle();
+}
+
+function loadPuzzle(){
+  if(current>=queue.length){endGame();return;}
+  hintsUsed=0; revealedIndices=[]; wordValue=10; wordZeroed=false;
+  const p=queue[current];
+  inp.value='';
+  document.getElementById('round-num').textContent=current+1;
+  document.getElementById('total-num').textContent=queue.length;
+  document.getElementById('score-num').textContent=totalScore;
+  document.getElementById('clue-text').textContent=p.clue;
+  document.getElementById('clue-extra').textContent=p.extra;
+  document.getElementById('feedback').textContent='';
+  document.getElementById('feedback').className='feedback';
+  document.getElementById('hints-used').textContent='0';
+  document.getElementById('hint-btn').disabled=false;
+  document.getElementById('word-value').textContent='10';
+  document.getElementById('potential-score-row').className='potential-score';
+  document.getElementById('progress-fill').style.width=(current/queue.length*100)+'%';
+  buildSlots(p.word.length);
+  inp.focus();
+}
+
+function buildSlots(n){
+  const c=document.getElementById('letter-slots'); c.innerHTML='';
+  for(let i=0;i<n;i++){
+    const s=document.createElement('div');
+    s.className='letter-slot'; s.id='slot-'+i;
+    c.appendChild(s);
+  }
+}
+
+function renderSlots(typedVal, state){
+  const p=queue[current], n=p.word.length;
+  let ti=0;
+  for(let i=0;i<n;i++){
+    const s=document.getElementById('slot-'+i); if(!s) continue;
+    s.innerHTML='';
+    if(state==='correct'){
+      s.className='letter-slot correct'; s.textContent=p.word[i];
+    } else if(state==='wrong'){
+      const ch=revealedIndices.includes(i)?p.word[i]:(typedVal&&typedVal[ti++])||'';
+      s.className='letter-slot wrong'; s.textContent=ch;
+    } else if(revealedIndices.includes(i)){
+      s.className='letter-slot hinted'; s.textContent=p.word[i];
+    } else {
+      const ch=(typedVal&&typedVal[ti++])||'';
+      s.className='letter-slot'+(ch?' filled':''); s.textContent=ch;
+    }
+  }
+}
+
+function getFullAttempt(){
+  const p=queue[current], typed=inp.value.toUpperCase();
+  let ti=0, result='';
+  for(let i=0;i<p.word.length;i++){
+    result+=revealedIndices.includes(i)?p.word[i]:(typed[ti++]||'');
+  }
+  return result;
+}
+
+function checkAnswer(){
+  const p=queue[current];
+  const attempt=getFullAttempt();
+  if(attempt.length<p.word.length) return;
+  const fb=document.getElementById('feedback');
+  if(attempt===p.word){
+    const earned=wordValue; totalScore+=earned;
+    flashScore('green'); renderSlots(inp.value,'correct');
+    fb.textContent=earned===10?'+10 — perfect!':earned>0?'+'+earned+' pts':'+0 — too many hints';
+    fb.className='feedback correct';
+    results.push({word:p.word,clue:p.clue,got:true,hints:hintsUsed,pts:earned,zeroed:wordZeroed});
+    inp.value='';
+    setTimeout(()=>{current++;loadPuzzle();},1000);
+  } else {
+    renderSlots(inp.value,'wrong');
+    fb.textContent='Not quite — try again'; fb.className='feedback wrong';
+    setTimeout(()=>{
+      inp.value=''; fb.textContent=''; fb.className='feedback';
+      renderSlots(''); inp.focus();
+    },700);
+  }
+}
+
+function revealHint(){
+  const p=queue[current], n=p.word.length;
+  let pick=-1; for(let i=0;i<n;i++){if(!revealedIndices.includes(i)){pick=i;break;}}
+  if(pick===-1) return;
+  revealedIndices.push(pick); hintsUsed++;
+  totalScore=Math.max(0,totalScore-1);
+  document.getElementById('score-num').textContent=totalScore;
+  document.getElementById('hints-used').textContent=hintsUsed;
+  flashScore('amber');
+  const maxLen=n-revealedIndices.length;
+  if(inp.value.length>maxLen) inp.value=inp.value.slice(0,maxLen);
+  const fb=document.getElementById('feedback'), threshold=halfwayThreshold(n);
+  if(!wordZeroed&&revealedIndices.length>=threshold){
+    wordZeroed=true; wordValue=0;
+    document.getElementById('word-value').textContent='0';
+    document.getElementById('potential-score-row').className='potential-score zeroed';
+    fb.textContent='Past the halfway point — 0 pts for this word'; fb.className='feedback zero';
+  } else if(!wordZeroed){
+    wordValue=Math.max(0,10-hintsUsed);
+    document.getElementById('word-value').textContent=wordValue;
+    fb.textContent='−1 point'; fb.className='feedback hint';
+  } else {
+    fb.textContent='−1 point (word already worth 0)'; fb.className='feedback hint';
+  }
+  setTimeout(()=>{if(fb.className==='feedback hint'||fb.className==='feedback zero'){fb.textContent='';fb.className='feedback';}},1400);
+  if(revealedIndices.length>=n) document.getElementById('hint-btn').disabled=true;
+  renderSlots(inp.value);
+  inp.focus();
+  if(maxLen===0) setTimeout(checkAnswer,80);
+}
+
+function flashScore(color){
+  const el=document.getElementById('score-num');
+  el.className=color==='green'?'flash-green':'flash-amber';
+  setTimeout(()=>{el.className='';},600);
+}
+
+function skipWord(){
+  results.push({word:queue[current].word,clue:queue[current].clue,got:false,hints:hintsUsed,pts:0,zeroed:false});
+  current++; loadPuzzle();
+}
+
+function endGame(){
+  document.getElementById('game-area').style.display='none';
+  document.getElementById('end-screen').style.display='block';
+  const maxPts=queue.length*10;
+  document.getElementById('final-score').textContent=totalScore+' pts';
+  const pct=totalScore/maxPts;
+  document.getElementById('final-label').textContent=(pct===1?'Perfect score — flawless!':pct>=0.75?'Great round!':pct>=0.5?'Not bad — keep at it':'Palindromes are tricky!')+' (max '+maxPts+' pts)';
+  const list=document.getElementById('results-list'); list.innerHTML='';
+  results.forEach(r=>{
+    const div=document.createElement('div'); div.className='result-item';
+    let bc,bt;
+    if(!r.got){bc='badge-missed';bt='Skipped';}
+    else if(r.zeroed){bc='badge-zero';bt='Too many hints';}
+    else if(r.hints>0){bc='badge-hinted';bt=r.hints+' hint'+(r.hints>1?'s':'');}
+    else{bc='badge-got';bt='No hints';}
+    div.innerHTML=`<div><div class="result-word">${r.word}</div><div class="result-clue">${r.clue}</div></div><div class="result-right"><span class="result-pts">${r.got?'+'+r.pts+' pt'+(r.pts!==1?'s':''):'+0'}</span><span class="result-badge ${bc}">${bt}</span></div>`;
+    list.appendChild(div);
+  });
+}
+
+function restartGame(){
+  document.getElementById('end-screen').style.display='none';
+  document.getElementById('start-screen').style.display='block';
+}
+</script>
+</body>
+</html>

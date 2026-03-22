@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Experimental Games</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,700;1,9..144,300&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0e0c;
+    --bg2: #161614;
+    --bg3: #1e1e1b;
+    --text: #f0ede6;
+    --text2: #8a8780;
+    --text3: #4a4845;
+    --accent: #d4f060;
+    --accent2: #f0a050;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.13);
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'DM Mono', monospace;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* grain overlay */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none; z-index: 100; opacity: 0.35;
+  }
+
+  /* ── HEADER ── */
+  header {
+    padding: 4rem 2rem 3rem;
+    max-width: 900px;
+    margin: 0 auto;
+    animation: fadeUp 0.6s ease both;
+  }
+
+  .eyebrow {
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 1.25rem;
+    font-weight: 400;
+  }
+
+  h1 {
+    font-family: 'Fraunces', serif;
+    font-size: clamp(42px, 8vw, 80px);
+    font-weight: 700;
+    line-height: 0.95;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    margin-bottom: 1.5rem;
+  }
+
+  h1 em {
+    font-style: italic;
+    font-weight: 300;
+    color: var(--text2);
+  }
+
+  .header-meta {
+    font-size: 13px;
+    color: var(--text3);
+    font-weight: 300;
+    max-width: 420px;
+    line-height: 1.7;
+  }
+
+  /* ── DIVIDER ── */
+  .divider {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 2rem;
+    border-top: 0.5px solid var(--border);
+    animation: fadeUp 0.6s 0.1s ease both;
+  }
+
+  /* ── GAMES GRID ── */
+  .games-section {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 3rem 2rem 6rem;
+  }
+
+  .section-label {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 1.5rem;
+    font-weight: 400;
+  }
+
+  .games-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1px;
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .game-card {
+    background: var(--bg2);
+    padding: 1.75rem;
+    text-decoration: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    transition: background 0.15s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .game-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--accent);
+    opacity: 0;
+    transition: opacity 0.15s;
+    pointer-events: none;
+  }
+
+  .game-card:hover { background: var(--bg3); }
+  .game-card:hover::after { opacity: 0.03; }
+
+  .game-card:hover .card-arrow { transform: translate(3px, -3px); opacity: 1; }
+  .game-card:hover .card-num { color: var(--accent); }
+
+  .card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1.5rem;
+  }
+
+  .card-num {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: var(--text3);
+    font-weight: 400;
+    transition: color 0.15s;
+  }
+
+  .card-arrow {
+    font-size: 14px;
+    color: var(--text3);
+    opacity: 0;
+    transition: transform 0.15s, opacity 0.15s;
+  }
+
+  .card-tag {
+    display: inline-block;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 4px;
+    margin-bottom: 0.75rem;
+    font-weight: 500;
+  }
+
+  .tag-word { background: rgba(212,240,96,0.12); color: var(--accent); }
+  .tag-coming { background: rgba(255,255,255,0.05); color: var(--text3); }
+
+  .card-title {
+    font-family: 'Fraunces', serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 0.5rem;
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+  }
+
+  .card-desc {
+    font-size: 12px;
+    color: var(--text2);
+    line-height: 1.65;
+    font-weight: 300;
+    margin-top: auto;
+  }
+
+  /* coming soon card */
+  .game-card.coming-soon {
+    opacity: 0.4;
+    cursor: default;
+    pointer-events: none;
+  }
+
+  /* staggered animation */
+  .game-card { animation: fadeUp 0.5s ease both; }
+  .game-card:nth-child(1) { animation-delay: 0.15s; }
+  .game-card:nth-child(2) { animation-delay: 0.22s; }
+  .game-card:nth-child(3) { animation-delay: 0.29s; }
+  .game-card:nth-child(4) { animation-delay: 0.36s; }
+
+  /* ── FOOTER ── */
+  footer {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem;
+    border-top: 0.5px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    color: var(--text3);
+    letter-spacing: 0.06em;
+  }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 540px) {
+    header { padding: 3rem 1.25rem 2rem; }
+    .games-section { padding: 2rem 1.25rem 4rem; }
+    footer { padding: 1.5rem 1.25rem; flex-direction: column; gap: 8px; text-align: center; }
+    .games-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">Experimental Games</div>
+  <h1>Small games,<br><em>big ideas</em></h1>
+  <p class="header-meta">A collection of browser-based word and puzzle games. No installs, no accounts — just play.</p>
+</header>
+
+<div class="divider"></div>
+
+<section class="games-section">
+  <div class="section-label">All games</div>
+  <div class="games-grid">
+
+    <!-- Mirror Words -->
+    <a class="game-card" href="./mirror-words/">
+      <div class="card-top">
+        <span class="card-num">01</span>
+        <span class="card-arrow">↗</span>
+      </div>
+      <span class="card-tag tag-word">Word</span>
+      <div class="card-title">Mirror Words</div>
+      <p class="card-desc">Find palindromes from clues. Hints cost points — but so does over-hinting.</p>
+    </a>
+
+    <!-- Tag Words -->
+    <a class="game-card" href="./tag-words/">
+      <div class="card-top">
+        <span class="card-num">02</span>
+        <span class="card-arrow">↗</span>
+      </div>
+      <span class="card-tag tag-word">Word</span>
+      <div class="card-title">Tag Words</div>
+      <p class="card-desc">A word-chain puzzle. Connect words by shared tags and see how far the chain goes.</p>
+    </a>
+
+    <!-- Word Bomb -->
+    <a class="game-card" href="./word-bomb/">
+      <div class="card-top">
+        <span class="card-num">03</span>
+        <span class="card-arrow">↗</span>
+      </div>
+      <span class="card-tag tag-word">Word</span>
+      <div class="card-title">Word Bomb</div>
+      <p class="card-desc">Find every hidden word before the bomb goes off — one wrong guess could set it off.</p>
+    </a>
+
+    <!-- Placeholder -->
+    <div class="game-card coming-soon">
+      <div class="card-top">
+        <span class="card-num">04</span>
+      </div>
+      <span class="card-tag tag-coming">Coming soon</span>
+      <div class="card-title">???</div>
+      <p class="card-desc">Something new is in the works.</p>
+    </div>
+
+  </div>
+</section>
+
+<footer>
+  <span>Experimental Games</span>
+  <span>Built in the browser</span>
+</footer>
+
+</body>
+</html>
