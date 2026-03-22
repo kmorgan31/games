@@ -3,17 +3,24 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mirror Words</title>
+<title>Blend Words</title>
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 <div id="app">
+
+  <!-- START SCREEN -->
   <div id="start-screen">
     <a href="../index.html" class="back-link">← All games</a>
-    <div class="title">Mirror Words</div>
-    <div class="subtitle">Find words that read the same both ways</div>
-    <div class="mirror-demo">R A C E C A R</div>
-    <div class="mirror-arrow">forward = backward</div>
+    <div class="title">Blend Words</div>
+    <div class="subtitle">Two words fused into one — can you name the result?</div>
+    <div class="blend-demo">
+      <span class="demo-chip">BREAKFAST</span>
+      <span class="demo-op">+</span>
+      <span class="demo-chip">LUNCH</span>
+      <span class="demo-op">=</span>
+      <span class="demo-answer">BRUNCH</span>
+    </div>
     <div class="info-box">
       <div class="info-row"><div class="dot g"></div><span>Correct answer = +10 points</span></div>
       <div class="info-row"><div class="dot a"></div><span>Each hint reveals the next letter = −1 pt immediately</span></div>
@@ -23,23 +30,30 @@
     <button class="primary" onclick="startGame()">Play</button>
   </div>
 
+  <!-- GAME AREA -->
   <div id="game-area">
     <a href="../index.html" class="back-link">← All games</a>
     <div class="meta-row">
-      <div class="stat-pill">Round <span id="round-num">1</span> / <span id="total-num">8</span></div>
+      <div class="stat-pill">Round <span id="round-num">1</span> / <span id="total-num">5</span></div>
       <div class="stat-pill">Score <span id="score-num">0</span></div>
     </div>
     <div class="progress-bar-wrap"><div class="progress-bar-fill" id="progress-fill" style="width:0%"></div></div>
     <div class="clue-card">
-      <div class="clue-label">Clue</div>
-      <div class="clue-text" id="clue-text"></div>
+      <div class="clue-label">Blend</div>
+      <div class="fusion-row">
+        <span class="fusion-chip" id="word-a"></span>
+        <span class="fusion-op">+</span>
+        <span class="fusion-chip" id="word-b"></span>
+        <span class="fusion-op">=</span>
+        <span class="fusion-q">?</span>
+      </div>
       <div class="clue-extra" id="clue-extra"></div>
     </div>
     <div class="slots-wrap" id="letter-slots"></div>
     <input id="answer-input" type="text"
       autocomplete="off" autocorrect="off" autocapitalize="characters"
       spellcheck="false" inputmode="text" placeholder="type here" />
-    <div class="potential-score" id="potential-score-row">This word worth <span id="word-value">10</span> pts</div>
+    <div class="potential-score" id="potential-score-row">This blend worth <span id="word-value">10</span> pts</div>
     <div class="hint-action-row">
       <button id="hint-btn" onclick="revealHint()">Reveal next letter</button>
       <div class="hint-cost">−1 pt per hint &middot; <span id="hints-used">0</span> used this word</div>
@@ -50,6 +64,7 @@
     </div>
   </div>
 
+  <!-- END SCREEN -->
   <div id="end-screen">
     <a href="../index.html" class="back-link">← All games</a>
     <div class="score-big" id="final-score"></div>
@@ -57,10 +72,12 @@
     <div class="results-list" id="results-list"></div>
     <button class="secondary" onclick="restartGame()">Play again</button>
   </div>
+
 </div>
 
 <script src="words.js"></script>
 <script>
+const ROUND_COUNT = 5;
 let queue=[], current=0, totalScore=0, results=[];
 let hintsUsed=0, revealedIndices=[], wordValue=10, wordZeroed=false;
 
@@ -83,7 +100,7 @@ inp.addEventListener('keydown', function(e){
 });
 
 function startGame(){
-  queue=shuffle(PUZZLES).slice(0,8);
+  queue=shuffle(PUZZLES).slice(0,ROUND_COUNT);
   current=0; totalScore=0; results=[];
   document.getElementById('start-screen').style.display='none';
   document.getElementById('end-screen').style.display='none';
@@ -99,8 +116,9 @@ function loadPuzzle(){
   document.getElementById('round-num').textContent=current+1;
   document.getElementById('total-num').textContent=queue.length;
   document.getElementById('score-num').textContent=totalScore;
-  document.getElementById('clue-text').textContent=p.clue;
-  document.getElementById('clue-extra').textContent=p.extra;
+  document.getElementById('word-a').textContent=p.a;
+  document.getElementById('word-b').textContent=p.b;
+  document.getElementById('clue-extra').textContent=p.clue;
   document.getElementById('feedback').textContent='';
   document.getElementById('feedback').className='feedback';
   document.getElementById('hints-used').textContent='0';
@@ -108,6 +126,8 @@ function loadPuzzle(){
   document.getElementById('word-value').textContent='10';
   document.getElementById('potential-score-row').className='potential-score';
   document.getElementById('progress-fill').style.width=(current/queue.length*100)+'%';
+  const wrap=document.getElementById('letter-slots');
+  wrap.className=p.word.length>9?'slots-wrap compact':'slots-wrap';
   buildSlots(p.word.length);
   inp.focus();
 }
@@ -158,9 +178,9 @@ function checkAnswer(){
   if(attempt===p.word){
     const earned=wordValue; totalScore+=earned;
     flashScore('green'); renderSlots(inp.value,'correct');
-    fb.textContent=earned===10?'+10 — perfect!':earned>0?'+'+earned+' pts':'+0 — too many hints';
+    fb.textContent=earned===10?'+10 — perfect blend!':earned>0?'+'+earned+' pts':'+0 — too many hints';
     fb.className='feedback correct';
-    results.push({word:p.word,clue:p.clue,got:true,hints:hintsUsed,pts:earned,zeroed:wordZeroed});
+    results.push({word:p.word,a:p.a,b:p.b,got:true,hints:hintsUsed,pts:earned,zeroed:wordZeroed});
     inp.value='';
     setTimeout(()=>{current++;loadPuzzle();},1000);
   } else {
@@ -189,13 +209,13 @@ function revealHint(){
     wordZeroed=true; wordValue=0;
     document.getElementById('word-value').textContent='0';
     document.getElementById('potential-score-row').className='potential-score zeroed';
-    fb.textContent='Past the halfway point — 0 pts for this word'; fb.className='feedback zero';
+    fb.textContent='Past the halfway point — 0 pts for this blend'; fb.className='feedback zero';
   } else if(!wordZeroed){
     wordValue=Math.max(0,10-hintsUsed);
     document.getElementById('word-value').textContent=wordValue;
     fb.textContent='−1 point'; fb.className='feedback hint';
   } else {
-    fb.textContent='−1 point (word already worth 0)'; fb.className='feedback hint';
+    fb.textContent='−1 point (blend already worth 0)'; fb.className='feedback hint';
   }
   setTimeout(()=>{if(fb.className==='feedback hint'||fb.className==='feedback zero'){fb.textContent='';fb.className='feedback';}},1400);
   if(revealedIndices.length>=n) document.getElementById('hint-btn').disabled=true;
@@ -211,7 +231,8 @@ function flashScore(color){
 }
 
 function skipWord(){
-  results.push({word:queue[current].word,clue:queue[current].clue,got:false,hints:hintsUsed,pts:0,zeroed:false});
+  const p=queue[current];
+  results.push({word:p.word,a:p.a,b:p.b,got:false,hints:hintsUsed,pts:0,zeroed:false});
   current++; loadPuzzle();
 }
 
@@ -221,7 +242,12 @@ function endGame(){
   const maxPts=queue.length*10;
   document.getElementById('final-score').textContent=totalScore+' pts';
   const pct=totalScore/maxPts;
-  document.getElementById('final-label').textContent=(pct===1?'Perfect score — flawless!':pct>=0.75?'Great round!':pct>=0.5?'Not bad — keep at it':'Palindromes are tricky!')+' (max '+maxPts+' pts)';
+  document.getElementById('final-label').textContent=(
+    pct===1   ? 'Flawless — master blender!' :
+    pct>=0.75 ? 'Great round — nice fusions!' :
+    pct>=0.5  ? 'Not bad — keep mashing!' :
+                'Portmanteaus are tricky!'
+  )+' (max '+maxPts+' pts)';
   const list=document.getElementById('results-list'); list.innerHTML='';
   results.forEach(r=>{
     const div=document.createElement('div'); div.className='result-item';
@@ -230,7 +256,7 @@ function endGame(){
     else if(r.zeroed){bc='badge-zero';bt='Too many hints';}
     else if(r.hints>0){bc='badge-hinted';bt=r.hints+' hint'+(r.hints>1?'s':'');}
     else{bc='badge-got';bt='No hints';}
-    div.innerHTML=`<div><div class="result-word">${r.word}</div><div class="result-clue">${r.clue}</div></div><div class="result-right"><span class="result-pts">${r.got?'+'+r.pts+' pt'+(r.pts!==1?'s':''):'+0'}</span><span class="result-badge ${bc}">${bt}</span></div>`;
+    div.innerHTML=`<div><div class="result-word">${r.word}</div><div class="result-clue">${r.a} + ${r.b}</div></div><div class="result-right"><span class="result-pts">${r.got?'+'+r.pts+' pt'+(r.pts!==1?'s':''):'+0'}</span><span class="result-badge ${bc}">${bt}</span></div>`;
     list.appendChild(div);
   });
 }

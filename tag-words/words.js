@@ -5,10 +5,10 @@ const PUZZLES = {
       { word:"dirt", clue:"The loose soil you dig in a garden", letters:4 },
       { word:"tree", clue:"Tall woody plant with branches and leaves", letters:4 }
     ]},
-    { theme: "both creatures of darkness and the wild", chain: [
+    { theme: "all creatures of the wild", chain: [
       { word:"wolf", clue:"Wild howling pack animal, cousin to the dog", letters:4 },
       { word:"fawn", clue:"A newborn deer with a spotted coat", letters:4 },
-      { word:"night", clue:"The dark hours after sunset", letters:5 }
+      { word:"newt", clue:"A small amphibian that lurks in ponds and damp woodland", letters:4 }
     ]},
     { theme: "both part of the sea", chain: [
       { word:"tide", clue:"The daily rise and fall of the sea", letters:4 },
@@ -20,10 +20,10 @@ const PUZZLES = {
       { word:"fern", clue:"A leafy plant that loves damp and shade", letters:4 },
       { word:"nest", clue:"A bird's cosy home woven from twigs", letters:4 }
     ]},
-    { theme: "both part of a stormy day", chain: [
-      { word:"rain", clue:"Water droplets falling from clouds", letters:4 },
-      { word:"noon", clue:"The middle of the day when shadows are shortest", letters:4 },
-      { word:"night", clue:"The dark part of the day after sunset", letters:5 }
+    { theme: "both lights in the night sky", chain: [
+      { word:"moon", clue:"The silvery orb that orbits the Earth and rules the tides", letters:4 },
+      { word:"nova", clue:"A star that suddenly blazes with intense brightness", letters:4 },
+      { word:"aurora", clue:"Shimmering curtains of colour that dance near the poles", letters:6 }
     ]}
   ],
   5: [
@@ -55,7 +55,7 @@ const PUZZLES = {
       { word:"grove", clue:"A small cluster of trees", letters:5 },
       { word:"elder", clue:"A shrub with white flowers and dark berries", letters:5 }
     ]},
-    { theme: "both powerful and elemental", chain: [
+    { theme: "both forces of nature", chain: [
       { word:"storm", clue:"Violent weather with strong wind and rain", letters:5 },
       { word:"maple", clue:"A tree famous for its leaf-shaped symbol and sweet syrup", letters:5 },
       { word:"earth", clue:"The soil beneath your feet; also our planet", letters:5 },
@@ -64,7 +64,7 @@ const PUZZLES = {
     ]}
   ],
   7: [
-    { theme: "both parts of a flowering plant", chain: [
+    { theme: "both found in a flower garden", chain: [
       { word:"petal",  clue:"One of the coloured parts of a flower", letters:5 },
       { word:"lark",   clue:"A small songbird known for soaring and singing", letters:4 },
       { word:"kneel",  clue:"To rest your weight on one or both knees", letters:5 },
@@ -82,14 +82,14 @@ const PUZZLES = {
       { word:"twig",   clue:"A thin small branch from a tree", letters:4 },
       { word:"grass",  clue:"The green blades covering lawns and meadows", letters:5 }
     ]},
-    { theme: "both biting moments in a winter's day", chain: [
+    { theme: "both sensations of a bitter winter", chain: [
       { word:"frost",  clue:"A thin layer of ice crystals that forms overnight", letters:5 },
       { word:"thorn",  clue:"A sharp spike on a rose stem", letters:5 },
       { word:"night",  clue:"The dark hours after sunset", letters:5 },
       { word:"tide",   clue:"The regular rise and fall of the sea", letters:4 },
       { word:"ember",  clue:"A glowing piece of a dying fire", letters:5 },
       { word:"rain",   clue:"Water falling from clouds", letters:4 },
-      { word:"noon",   clue:"Midday — when the sun is at its highest", letters:4 }
+      { word:"numb",   clue:"The creeping loss of feeling when cold bites through", letters:4 }
     ]},
     { theme: "both vast and mysterious", chain: [
       { word:"ocean",  clue:"The vast body of salt water covering the earth", letters:5 },

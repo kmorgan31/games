@@ -1,0 +1,264 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0b0b10;
+  --surface: #13121a;
+  --surface2: #1c1a25;
+  --surface3: #262330;
+  --border: #312e3e;
+  --border2: #47435a;
+  --text: #f2eeff;
+  --text2: #9a94b8;
+  --text3: #5c5775;
+  --accent: #f97316;
+  --accent-dim: #7c350a;
+  --accent-bg: #160d04;
+  --red: #f87171;
+  --red-dim: #7f1d1d;
+  --red-bg: #180707;
+  --green: #4ade80;
+  --green-dim: #14532d;
+  --green-bg: #051a0d;
+  --serif: 'Fraunces', Georgia, serif;
+  --sans: 'Syne', system-ui, sans-serif;
+  --mono: 'DM Mono', monospace;
+  --r: 9px;
+  --r-lg: 13px;
+}
+
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+.wrap {
+  max-width: 580px;
+  margin: 0 auto;
+  padding: 28px 16px 80px;
+}
+
+/* ── Typography ── */
+h1 {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.01em;
+}
+h2 {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+/* ── Inputs ── */
+input[type=text] {
+  font-family: var(--mono);
+  font-size: 16px;
+  padding: 11px 14px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  color: var(--text);
+  outline: none;
+  width: 100%;
+  transition: border-color 0.15s;
+}
+input:focus { border-color: var(--border2); }
+input::placeholder { color: var(--text3); }
+
+/* ── Buttons ── */
+.btn {
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 700;
+  padding: 11px 22px;
+  border: none;
+  border-radius: var(--r);
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+  letter-spacing: 0.01em;
+}
+.btn:active { transform: scale(0.97); }
+.btn-primary { background: var(--accent); color: #0b0b10; }
+.btn-primary:hover { opacity: 0.88; }
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text2);
+}
+.btn-ghost:hover { border-color: var(--border2); color: var(--text); }
+
+/* ── Movie list ── */
+.movie-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+.movie-row {
+  display: flex;
+  align-items: center;
+  background: var(--surface);
+  padding: 13px 16px;
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+  border-left: 3px solid var(--border2);
+}
+.movie-row:last-child { border-bottom: none; }
+.movie-num {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text3);
+  flex-shrink: 0;
+  min-width: 18px;
+  letter-spacing: 0.05em;
+}
+.movie-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.01em;
+  flex: 1;
+}
+.movie-year {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--accent);
+  font-weight: 500;
+  flex-shrink: 0;
+  opacity: 0;
+  transform: translateX(6px);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+.movie-year.visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* ── Lives (sprocket holes) ── */
+.life-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  transition: background 0.25s, transform 0.25s;
+}
+.life-dot.lost {
+  transform: scale(0.65);
+  background: var(--red-dim) !important;
+}
+
+/* ── Hint cards ── */
+.hint-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 14px 16px;
+  animation: hintSlideIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.hint-card.hint-years {
+  background: var(--accent-bg);
+  border-color: var(--accent-dim);
+  border-left: 3px solid var(--accent-dim);
+}
+.hint-card.hint-bio {
+  border-left: 3px solid var(--border2);
+}
+.hint-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--text3);
+  margin-bottom: 9px;
+}
+.hint-card.hint-years .hint-label { color: var(--accent-dim); }
+.hint-content {
+  font-size: 13px;
+  color: var(--text2);
+  line-height: 1.7;
+}
+.hint-content strong { color: var(--text); font-weight: 600; }
+
+/* ── Wrong guesses ── */
+.wrong-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--red-bg);
+  border: 1px solid var(--red-dim);
+  border-radius: var(--r);
+  padding: 3px 9px;
+  font-size: 12px;
+  font-family: var(--mono);
+  color: var(--red);
+}
+
+/* ── Answer reveal ── */
+.name-reveal-blanks {
+  font-family: var(--mono);
+  font-size: 26px;
+  letter-spacing: 0.18em;
+  color: var(--text3);
+  text-align: center;
+  margin-bottom: 10px;
+  word-spacing: 16px;
+}
+.name-reveal-answer {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 38px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--accent);
+  text-align: center;
+  line-height: 1.1;
+}
+
+/* ── Animations ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes hintSlideIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  20%     { transform: translateX(-8px); }
+  40%     { transform: translateX(8px); }
+  60%     { transform: translateX(-5px); }
+  80%     { transform: translateX(5px); }
+}
+@keyframes popIn {
+  0%   { transform: scale(0.5); opacity: 0; }
+  65%  { transform: scale(1.12); }
+  100% { transform: scale(1);   opacity: 1; }
+}
+
+.anim-fadeup { animation: fadeUp 0.35s ease both; }
+.anim-shake  { animation: shake 0.45s ease; }
+.anim-pop    { animation: popIn 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; }
+
+/* ── Responsive ── */
+@media (max-width: 480px) {
+  .wrap { padding: 20px 12px 60px; }
+  h1 { font-size: 30px; }
+  h2 { font-size: 22px; }
+  .name-reveal-blanks { font-size: 20px; }
+  .name-reveal-answer { font-size: 30px; }
+}

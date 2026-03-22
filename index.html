@@ -178,6 +178,7 @@
   }
 
   .tag-word { background: rgba(212,240,96,0.12); color: var(--accent); }
+  .tag-film { background: rgba(249,115,22,0.12); color: #f97316; }
   .tag-coming { background: rgba(255,255,255,0.05); color: var(--text3); }
 
   .card-title {
@@ -211,6 +212,8 @@
   .game-card:nth-child(2) { animation-delay: 0.22s; }
   .game-card:nth-child(3) { animation-delay: 0.29s; }
   .game-card:nth-child(4) { animation-delay: 0.36s; }
+  .game-card:nth-child(5) { animation-delay: 0.43s; }
+  .game-card:nth-child(6) { animation-delay: 0.50s; }
 
   /* ── FOOTER ── */
   footer {
@@ -266,15 +269,15 @@
       <p class="card-desc">Find palindromes from clues. Hints cost points — but so does over-hinting.</p>
     </a>
 
-    <!-- Tag Words -->
+    <!-- Daisy Chain -->
     <a class="game-card" href="./tag-words/">
       <div class="card-top">
         <span class="card-num">02</span>
         <span class="card-arrow">↗</span>
       </div>
       <span class="card-tag tag-word">Word</span>
-      <div class="card-title">Tag Words</div>
-      <p class="card-desc">A word-chain puzzle. Connect words by shared tags and see how far the chain goes.</p>
+      <div class="card-title">Daisy Chain</div>
+      <p class="card-desc">Pick a petal, pass it on. Each word blooms from the last letter of the one before.</p>
     </a>
 
     <!-- Word Bomb -->
@@ -288,11 +291,30 @@
       <p class="card-desc">Find every word before the fuse burns through — one wrong guess, and it all blows up on you.</p>
     </a>
 
-    <!-- Placeholder -->
-    <div class="game-card coming-soon">
+    <!-- Blend Words -->
+    <a class="game-card" href="./blend-words/">
       <div class="card-top">
         <span class="card-num">04</span>
+        <span class="card-arrow">↗</span>
       </div>
+      <span class="card-tag tag-word">Word</span>
+      <div class="card-title">Blend Words</div>
+      <p class="card-desc">Two words are fused into one portmanteau — decode the clue and name the blend.</p>
+    </a>
+
+    <!-- Marquee -->
+    <a class="game-card" href="./marquee/">
+      <div class="card-top">
+        <span class="card-num">05</span>
+        <span class="card-arrow">↗</span>
+      </div>
+      <span class="card-tag tag-film">Film</span>
+      <div class="card-title">Marquee</div>
+      <p class="card-desc">Three to five films, one star in common — name the actor before the curtain falls.</p>
+    </a>
+
+    <!-- Placeholder -->
+    <div class="game-card coming-soon">
       <span class="card-tag tag-coming">Coming soon</span>
       <div class="card-title">???</div>
       <p class="card-desc">Something new is in the works.</p>
