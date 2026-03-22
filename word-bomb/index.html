@@ -120,6 +120,7 @@ input::placeholder{color:var(--text3)}
 <div class="wrap" id="app"></div>
 
 <script>
+"use strict";
 // ═══════════════════════════════════════════════════════════
 //  CATEGORY DATA
 // ═══════════════════════════════════════════════════════════
@@ -247,6 +248,9 @@ const TIERS = {
 // ═══════════════════════════════════════════════════════════
 let phase = "menu"; // menu | playing | over
 let cat = null;
+// found entries: {w, pts}  = correct word
+//                {w, bomb:true}  = bomb (game-ending)
+//                {w, miss:true, pts:0} = wrong guess
 let found = [];
 let score = 0;
 let missStreak = 0;
@@ -254,7 +258,6 @@ let overReason = null;
 let feedback = null;
 let fbTimer = null;
 let freshWord = null;
-let shaking = false;
 
 // ═══════════════════════════════════════════════════════════
 //  HELPERS
@@ -264,7 +267,7 @@ function shuffle(arr){return [...arr].sort(()=>Math.random()-.5)}
 function startGame(category){
   cat = category;
   found = []; score = 0; missStreak = 0;
-  overReason = null; feedback = null; freshWord = null; shaking = false;
+  overReason = null; feedback = null; freshWord = null;
   phase = "playing";
   render();
   setTimeout(()=>{
@@ -273,11 +276,102 @@ function startGame(category){
   },80);
 }
 
+// ── Targeted in-game DOM updates ──────────────────────────
+
 function showFeedback(fb){
   clearTimeout(fbTimer);
   feedback = fb;
-  render();
-  fbTimer = setTimeout(()=>{ feedback=null; render(); },1900);
+  updateFeedback();
+  if(fb.type !== "miss"){
+    fbTimer = setTimeout(()=>{ feedback=null; updateFeedback(); },1900);
+  }
+}
+
+function updateFeedback(){
+  const el = document.getElementById("game-feedback");
+  if(!el) return;
+  if(!feedback){ el.innerHTML=""; return; }
+  const styles = {
+    found:{bg:"var(--green-bg)",border:"var(--green-dim)",color:"var(--green)",icon:"✓"},
+    bomb: {bg:"var(--red-bg)",  border:"var(--red-dim)",  color:"var(--red)",  icon:"💥"},
+    miss: {bg:"var(--surface2)",border:"var(--border)",   color:"var(--text2)",icon:"✗"},
+    dupe: {bg:"#1a1505",        border:"#7c4b00",         color:"#fbbf24",     icon:"↩"},
+  };
+  const s = styles[feedback.type];
+  el.innerHTML = `
+    <div style="margin-top:9px;padding:8px 12px;background:${s.bg};border:1px solid ${s.border};border-radius:var(--r);font-size:13px;color:${s.color};font-weight:600;display:flex;align-items:center;gap:7px;animation:slideIn .2s ease">
+      <span>${s.icon}</span>
+      <span>
+        ${feedback.type==="found" ? `"${feedback.word}" — +${feedback.pts} pts${feedback.pts===5?" 🔥":feedback.pts===4?" ⭐":""}` : ""}
+        ${feedback.type==="bomb"  ? `"${feedback.word}" was a BOMB!` : ""}
+        ${feedback.type==="miss"  ? `"${feedback.word}" isn't on the list` : ""}
+        ${feedback.type==="dupe"  ? `Already guessed "${feedback.word}"!` : ""}
+      </span>
+    </div>`;
+}
+
+function updateWordsSection(){
+  const el = document.getElementById("game-words-section");
+  if(!el) return;
+  const validFound = found.filter(f=>!f.bomb&&!f.miss);
+  const allGuesses  = found.filter(f=>!f.bomb); // found + misses
+  if(allGuesses.length === 0){
+    el.innerHTML = `<div style="text-align:center;padding:20px;color:var(--text3);font-size:13px">Start typing to find words…</div>`;
+    return;
+  }
+  el.innerHTML = `
+    <div>
+      <div class="label" style="margin-bottom:8px">Found — ${validFound.length} word${validFound.length!==1?"s":""}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        ${[...allGuesses].reverse().map(f=>{
+          if(f.miss){
+            return `<div class="chip" style="background:var(--surface2);border-color:var(--border)">
+              <span style="font-size:13px;color:var(--text3);font-family:var(--mono);font-weight:500">${f.w}</span>
+              <span style="font-size:11px;color:var(--text3);opacity:.5;font-weight:700">+0</span>
+            </div>`;
+          }
+          const t=TIERS[f.pts]||TIERS[1];
+          const isFresh = f.w===freshWord;
+          return `<div class="chip${isFresh?" anim-pop":""}" style="background:${t.bg};border-color:${t.border}">
+            <span style="font-size:13px;color:${t.color};font-family:var(--mono);font-weight:500">${f.w}</span>
+            <span style="font-size:11px;color:${t.color};opacity:.7;font-weight:700">+${f.pts}</span>
+          </div>`;
+        }).join("")}
+      </div>
+    </div>`;
+}
+
+function updateGame(){
+  if(phase!=="playing") return;
+  const validFound = found.filter(f=>!f.bomb&&!f.miss);
+  const pct = Math.round((validFound.length / cat.words.length) * 100);
+  const barColor = pct===100?"#4ade80":pct>60?"#86efac":pct>30?"#bef264":"#d9f99d";
+
+  const scoreEl = document.getElementById("game-score");
+  if(scoreEl) scoreEl.textContent = score;
+
+  const foundLabel = document.getElementById("game-found-label");
+  if(foundLabel) foundLabel.innerHTML = `<strong style="color:var(--text)">${validFound.length}</strong> / ${cat.words.length} found`;
+
+  const remainLabel = document.getElementById("game-remaining-label");
+  if(remainLabel) remainLabel.textContent = `${cat.words.length - validFound.length} remaining`;
+
+  const barFill = document.getElementById("game-bar-fill");
+  if(barFill){ barFill.style.width = pct+"%"; barFill.style.background = barColor; }
+
+  const missDots = document.getElementById("game-miss-dots");
+  if(missDots) missDots.innerHTML = [0,1,2].map(i=>
+    `<div class="dot" style="background:${i<missStreak?"var(--red)":"var(--border2)"};transform:${i===missStreak-1&&missStreak>0?"scale(1.5)":"scale(1)"}"></div>`
+  ).join("");
+
+  const missText = document.getElementById("game-miss-text");
+  if(missText){
+    missText.style.color = missStreak===2?"var(--red)":"var(--text3)";
+    missText.style.fontWeight = missStreak===2?"700":"400";
+    missText.textContent = missStreak===0?"3 misses = game over":missStreak===1?"2 misses left":"⚠ 1 miss left!";
+  }
+
+  updateWordsSection();
 }
 
 function submitGuess(){
@@ -286,16 +380,17 @@ function submitGuess(){
   if(!inp) return;
   const guess = inp.value.trim().toLowerCase().replace(/[^a-z]/g,"");
   inp.value = "";
+  inp.focus();
 
-  if(!guess){ inp.focus(); return; }
+  if(!guess) return;
 
   const wordEntry = cat.words.find(w=>w.w===guess);
   const isBomb = cat.bombs.includes(guess);
-  const alreadyFound = found.some(f=>f.w===guess);
+  const alreadyGuessed = found.some(f=>f.w===guess);
 
-  if(alreadyFound){
+  if(alreadyGuessed){
     showFeedback({type:"dupe",word:guess});
-    inp.focus(); return;
+    return;
   }
 
   if(isBomb){
@@ -312,23 +407,27 @@ function submitGuess(){
     missStreak = 0;
     freshWord = guess;
     showFeedback({type:"found",word:guess,pts:wordEntry.p});
-    setTimeout(()=>{freshWord=null;},500);
-    if(found.filter(f=>!f.bomb).length === cat.words.length){
+    updateGame();
+    setTimeout(()=>{ freshWord=null; updateWordsSection(); },500);
+    if(found.filter(f=>!f.bomb&&!f.miss).length === cat.words.length){
       overReason="win";
       setTimeout(()=>{phase="over";render();},900);
     }
   } else {
+    found.push({w:guess,miss:true,pts:0});
     missStreak++;
-    shaking = true;
-    render();
-    setTimeout(()=>{shaking=false;render();},500);
+    // Restart shake animation without re-rendering
+    inp.classList.remove("anim-shake");
+    void inp.offsetWidth; // force reflow to restart animation
+    inp.classList.add("anim-shake");
+    setTimeout(()=>inp.classList.remove("anim-shake"),500);
     showFeedback({type:"miss",word:guess});
+    updateGame();
     if(missStreak>=3){
       overReason="misses";
       setTimeout(()=>{phase="over";render();},1000);
     }
   }
-  setTimeout(()=>{ const i=document.getElementById("guess-input"); if(i)i.focus(); },10);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -345,6 +444,7 @@ function render(){
 function renderMenu(){
   return `
   <div class="anim-fadeup">
+    <a href="../index.html" style="display:inline-flex;align-items:center;gap:5px;font-size:13px;color:var(--text3);text-decoration:none;margin-bottom:20px">← All games</a>
     <!-- Masthead -->
     <div style="margin-bottom:36px">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
@@ -397,24 +497,17 @@ function renderMenu(){
 }
 
 function renderGame(){
-  const validFound = found.filter(f=>!f.bomb);
+  const validFound = found.filter(f=>!f.bomb&&!f.miss);
+  const allGuesses  = found.filter(f=>!f.bomb);
   const pct = Math.round((validFound.length / cat.words.length) * 100);
   const barColor = pct===100?"#4ade80":pct>60?"#86efac":pct>30?"#bef264":"#d9f99d";
-
-  const fbStyles = {
-    found:{bg:"var(--green-bg)",border:"var(--green-dim)",color:"var(--green)",icon:"✓"},
-    bomb: {bg:"var(--red-bg)",  border:"var(--red-dim)",  color:"var(--red)",  icon:"💥"},
-    miss: {bg:"var(--surface2)",border:"var(--border)",   color:"var(--text2)",icon:"✗"},
-    dupe: {bg:"#1a1505",        border:"#7c4b00",          color:"#fbbf24",     icon:"↩"},
-  };
-
-  const fb = feedback ? fbStyles[feedback.type] : null;
 
   return `
   <div class="anim-fadeup">
     <!-- Header -->
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
       <div style="display:flex;align-items:center;gap:10px">
+        <a href="../index.html" style="display:inline-flex;align-items:center;font-size:13px;color:var(--text3);text-decoration:none;padding:8px 4px">← Home</a>
         <button class="btn btn-ghost" id="btn-new" style="padding:8px 12px;font-size:13px">↺ New</button>
         <div style="display:flex;align-items:center;gap:8px">
           <span style="font-size:22px">${cat.emoji}</span>
@@ -425,7 +518,7 @@ function renderGame(){
         </div>
       </div>
       <div style="text-align:center;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:8px 14px;min-width:54px">
-        <div style="font-size:26px;font-weight:800;line-height:1;color:var(--accent)">${score}</div>
+        <div id="game-score" style="font-size:26px;font-weight:800;line-height:1;color:var(--accent)">${score}</div>
         <div style="font-size:10px;color:var(--text3);margin-top:2px">pts</div>
       </div>
     </div>
@@ -433,11 +526,11 @@ function renderGame(){
     <!-- Progress -->
     <div style="margin-bottom:12px">
       <div style="display:flex;justify-content:space-between;margin-bottom:5px">
-        <span style="font-size:12px;color:var(--text2)"><strong style="color:var(--text)">${validFound.length}</strong> / ${cat.words.length} found</span>
-        <span style="font-size:12px;color:var(--text3)">${cat.words.length - validFound.length} remaining</span>
+        <span id="game-found-label" style="font-size:12px;color:var(--text2)"><strong style="color:var(--text)">${validFound.length}</strong> / ${cat.words.length} found</span>
+        <span id="game-remaining-label" style="font-size:12px;color:var(--text3)">${cat.words.length - validFound.length} remaining</span>
       </div>
       <div class="bar-track">
-        <div class="bar-fill" style="width:${pct}%;background:${barColor}"></div>
+        <div class="bar-fill" id="game-bar-fill" style="width:${pct}%;background:${barColor}"></div>
       </div>
     </div>
 
@@ -445,13 +538,13 @@ function renderGame(){
     <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);margin-bottom:14px">
       <div style="display:flex;align-items:center;gap:8px">
         <span style="font-size:12px;color:var(--text3)">Miss streak</span>
-        <div style="display:flex;gap:5px">
+        <div style="display:flex;gap:5px" id="game-miss-dots">
           ${[0,1,2].map(i=>`
             <div class="dot" style="background:${i<missStreak?"var(--red)":"var(--border2)"};transform:${i===missStreak-1&&missStreak>0?"scale(1.5)":"scale(1)"}"></div>
           `).join("")}
         </div>
       </div>
-      <span style="font-size:11px;color:${missStreak===2?"var(--red)":"var(--text3)"};font-weight:${missStreak===2?700:400}">
+      <span id="game-miss-text" style="font-size:11px;color:${missStreak===2?"var(--red)":"var(--text3)"};font-weight:${missStreak===2?700:400}">
         ${missStreak===0?"3 misses = game over":missStreak===1?"2 misses left":"⚠ 1 miss left!"}
       </span>
     </div>
@@ -463,24 +556,13 @@ function renderGame(){
           type="text" id="guess-input"
           placeholder="Type a ${cat.name.toLowerCase().replace(/s$/,"")}…"
           autocomplete="off" spellcheck="false"
-          class="${shaking?"anim-shake":""}"
           style="flex:1"
         />
         <button class="btn btn-primary" id="btn-submit" style="padding:11px 18px;flex-shrink:0">
           Enter ↵
         </button>
       </div>
-      ${fb ? `
-        <div style="margin-top:9px;padding:8px 12px;background:${fb.bg};border:1px solid ${fb.border};border-radius:var(--r);font-size:13px;color:${fb.color};font-weight:600;display:flex;align-items:center;gap:7px;animation:slideIn .2s ease">
-          <span>${fb.icon}</span>
-          <span>
-            ${feedback.type==="found" ? `"${feedback.word}" — +${feedback.pts} pts${feedback.pts===5?" 🔥":feedback.pts===4?" ⭐":""}` : ""}
-            ${feedback.type==="bomb"  ? `"${feedback.word}" was a BOMB!` : ""}
-            ${feedback.type==="miss"  ? `"${feedback.word}" isn't on the list` : ""}
-            ${feedback.type==="dupe"  ? `Already found "${feedback.word}"!` : ""}
-          </span>
-        </div>
-      ` : ""}
+      <div id="game-feedback"></div>
     </div>
 
     <!-- Tier legend -->
@@ -494,29 +576,38 @@ function renderGame(){
       </div>
     </div>
 
-    <!-- Found words -->
-    ${validFound.length > 0 ? `
-      <div>
-        <div class="label" style="margin-bottom:8px">Found — ${validFound.length} word${validFound.length!==1?"s":""}</div>
-        <div style="display:flex;flex-wrap:wrap;gap:6px">
-          ${[...validFound].reverse().map(f=>{
-            const t=TIERS[f.pts]||TIERS[1];
-            const isFresh = f.w===freshWord;
-            return `<div class="chip${isFresh?" anim-pop":""}" style="background:${t.bg};border-color:${t.border}">
-              <span style="font-size:13px;color:${t.color};font-family:var(--mono);font-weight:500">${f.w}</span>
-              <span style="font-size:11px;color:${t.color};opacity:.7;font-weight:700">+${f.pts}</span>
-            </div>`;
-          }).join("")}
-        </div>
-      </div>
-    ` : `<div style="text-align:center;padding:20px;color:var(--text3);font-size:13px">Start typing to find words…</div>`}
+    <!-- Found / missed words -->
+    <div id="game-words-section">
+      ${allGuesses.length === 0
+        ? `<div style="text-align:center;padding:20px;color:var(--text3);font-size:13px">Start typing to find words…</div>`
+        : `<div>
+            <div class="label" style="margin-bottom:8px">Found — ${validFound.length} word${validFound.length!==1?"s":""}</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px">
+              ${[...allGuesses].reverse().map(f=>{
+                if(f.miss){
+                  return `<div class="chip" style="background:var(--surface2);border-color:var(--border)">
+                    <span style="font-size:13px;color:var(--text3);font-family:var(--mono);font-weight:500">${f.w}</span>
+                    <span style="font-size:11px;color:var(--text3);opacity:.5;font-weight:700">+0</span>
+                  </div>`;
+                }
+                const t=TIERS[f.pts]||TIERS[1];
+                const isFresh = f.w===freshWord;
+                return `<div class="chip${isFresh?" anim-pop":""}" style="background:${t.bg};border-color:${t.border}">
+                  <span style="font-size:13px;color:${t.color};font-family:var(--mono);font-weight:500">${f.w}</span>
+                  <span style="font-size:11px;color:${t.color};opacity:.7;font-weight:700">+${f.pts}</span>
+                </div>`;
+              }).join("")}
+            </div>
+          </div>`
+      }
+    </div>
   </div>`;
 }
 
 function renderOver(){
   const won = overReason==="win";
   const isBomb = overReason==="bomb";
-  const validFound = found.filter(f=>!f.bomb);
+  const validFound = found.filter(f=>!f.bomb&&!f.miss);
   const maxPossible = cat.words.reduce((s,w)=>s+w.p,0);
 
   return `
@@ -562,6 +653,9 @@ function renderOver(){
       <button class="btn btn-primary" id="btn-replay" style="font-size:15px;padding:12px 28px">Play again →</button>
       <button class="btn btn-ghost" id="btn-new" style="font-size:14px;padding:12px 20px">New category</button>
     </div>
+    <div style="margin-top:16px">
+      <a href="../index.html" style="font-size:13px;color:var(--text3);text-decoration:none">← All games</a>
+    </div>
   </div>`;
 }
 
@@ -576,6 +670,7 @@ function attachListeners(){
   const inp = document.getElementById("guess-input");
   if(inp){
     inp.onkeydown = e=>{ if(e.key==="Enter"){e.preventDefault();submitGuess();} };
+    inp.oninput = ()=>{ if(feedback&&feedback.type==="miss"){ clearTimeout(fbTimer); feedback=null; updateFeedback(); } };
     inp.focus();
   }
 

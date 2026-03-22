@@ -268,6 +268,8 @@
     cursor: pointer; transition: all 0.15s;
   }
   .play-again:hover { border-color: var(--accent); color: var(--accent); }
+  .back-link { display: inline-flex; align-items: center; gap: 5px; font-family: var(--mono); font-size: 12px; color: var(--text-dim); text-decoration: none; margin-bottom: 1.5rem; }
+  .back-link:hover { color: var(--text-muted); }
 </style>
 </head>
 <body>
@@ -275,6 +277,7 @@
 
   <!-- START -->
   <div id="start-screen" class="screen active">
+    <a href="../index.html" class="back-link">← All games</a>
     <div class="title-wrap">
       <h1 class="game-title">Tag <span>Words</span></h1>
       <p class="game-tagline">// a word-chain puzzle</p>
@@ -323,6 +326,7 @@
 
   <!-- GAME -->
   <div id="game-screen" class="screen">
+    <a href="../index.html" class="back-link">← All games</a>
     <div class="hud">
       <div>
         <div class="hud-score-label">Score</div>
@@ -367,6 +371,7 @@
       <div id="win-connection" style="display:flex;align-items:center;flex-wrap:wrap;gap:5px;margin-bottom:1rem;font-family:var(--mono);font-size:12px;"></div>
       <div class="chain-reveal" id="chain-reveal"></div>
       <button class="play-again" onclick="showStart()">↩ Play again</button>
+      <div style="text-align:center;margin-top:12px"><a href="../index.html" class="back-link" style="margin-bottom:0">← All games</a></div>
     </div>
   </div>
 
