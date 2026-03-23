@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>One-Letter Shift</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- START SCREEN -->
+  <div id="start-screen">
+    <a href="../index.html" class="back-link">← All games</a>
+    <div class="title">One-Letter Shift</div>
+    <div class="subtitle">Every letter has been nudged one step up the alphabet.<br>Shift each one back to reveal the sentence.</div>
+
+    <div class="demo-block">
+      <div class="demo-row">
+        <span class="demo-encoded">XPSME</span>
+        <span class="demo-arrow">→</span>
+        <span class="demo-decoded">WORLD</span>
+      </div>
+      <div class="demo-note">x−1=w &nbsp;·&nbsp; p−1=o &nbsp;·&nbsp; s−1=r &nbsp;·&nbsp; m−1=l &nbsp;·&nbsp; e−1=d</div>
+    </div>
+
+    <div class="info-box">
+      <div class="info-row"><div class="dot g"></div><span>Each decoded word = +5 pts</span></div>
+      <div class="info-row"><div class="dot g"></div><span>Decode every word in a sentence with no hints = +10 bonus</span></div>
+      <div class="info-row"><div class="dot a"></div><span>Each letter hint = −1 pt immediately</span></div>
+      <div class="info-row"><div class="dot r"></div><span>Word fully revealed by hints or skipped = 0 pts for that word</span></div>
+      <div class="info-row"><div class="dot"></div><span>Wrong guesses carry no penalty — keep trying</span></div>
+    </div>
+
+    <button class="primary" onclick="startGame()">Play</button>
+  </div>
+
+  <!-- GAME AREA -->
+  <div id="game-area">
+    <a href="../index.html" class="back-link">← All games</a>
+
+    <div class="meta-row">
+      <div class="stat-pill">Sentence <span id="round-num">1</span> / <span id="total-num">5</span></div>
+      <div class="stat-pill">Score <span id="score-num">0</span></div>
+    </div>
+    <div class="progress-bar-wrap"><div class="progress-bar-fill" id="progress-fill"></div></div>
+
+    <div class="sentence-display" id="sentence-display"></div>
+
+    <div class="decode-card">
+      <span class="decode-label">Decode</span>
+      <span class="decode-word" id="decode-word"></span>
+      <span class="decode-sep">→</span>
+    </div>
+
+    <div class="slots-wrap" id="letter-slots"></div>
+
+    <input id="answer-input" type="text"
+      autocomplete="off" autocorrect="off" autocapitalize="characters"
+      spellcheck="false" inputmode="text" placeholder="type here" />
+
+    <div class="scoring-row">
+      <div class="score-chip" id="word-chip">Word &middot; <span id="word-val">5 pts</span></div>
+      <div class="bonus-chip bonus-live" id="bonus-chip">Bonus &middot; <span>+10 no hints</span></div>
+    </div>
+
+    <div class="hint-action-row">
+      <button id="hint-btn" onclick="revealHint()">Reveal next letter</button>
+      <div class="hint-cost">−1 pt per hint &middot; <span id="hints-used">0</span> used</div>
+    </div>
+
+    <div class="feedback" id="feedback"></div>
+
+    <div class="skip-row">
+      <button class="skip-btn" onclick="skipWord()">Skip this word →</button>
+    </div>
+  </div>
+
+  <!-- END SCREEN -->
+  <div id="end-screen">
+    <a href="../index.html" class="back-link">← All games</a>
+    <div class="score-big" id="final-score"></div>
+    <div class="score-label" id="final-label"></div>
+    <div class="results-list" id="results-list"></div>
+    <button class="secondary" onclick="restartGame()">Play again</button>
+  </div>
+
+</div>
+
+<script src="sentences.js"></script>
+<script>
+const ROUND_COUNT = 5;
+let queue = [], sentenceIdx = 0, totalScore = 0, results = [];
+let wordIdx = 0, hintsUsed = 0, revealedIndices = [], skippedWords = [];
+let wordRevealed = false; // true when all letters hinted out (auto-check fires, word worth 0)
+let wordPtsEarned = 0;   // running word pts for this sentence (excludes bonus)
+
+const inp = document.getElementById('answer-input');
+
+function shuffle(a) {
+  const b = [...a];
+  for (let i = b.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [b[i], b[j]] = [b[j], b[i]];
+  }
+  return b;
+}
+
+function startGame() {
+  queue = shuffle(SENTENCES).slice(0, ROUND_COUNT);
+  sentenceIdx = 0; totalScore = 0; results = [];
+  document.getElementById('start-screen').style.display = 'none';
+  document.getElementById('end-screen').style.display = 'none';
+  document.getElementById('game-area').style.display = 'block';
+  loadSentence();
+}
+
+function loadSentence() {
+  if (sentenceIdx >= queue.length) { endGame(); return; }
+  wordIdx = 0; hintsUsed = 0; revealedIndices = []; skippedWords = [];
+  wordRevealed = false; wordPtsEarned = 0;
+  document.getElementById('round-num').textContent = sentenceIdx + 1;
+  document.getElementById('total-num').textContent = queue.length;
+  document.getElementById('score-num').textContent = totalScore;
+  document.getElementById('hints-used').textContent = '0';
+  document.getElementById('feedback').textContent = '';
+  document.getElementById('feedback').className = 'feedback';
+  document.getElementById('progress-fill').style.width = (sentenceIdx / queue.length * 100) + '%';
+  document.getElementById('hint-btn').disabled = false;
+  setWordChip(5, false);
+  setBonusChip(true);
+  renderSentenceDisplay();
+  loadWord();
+}
+
+function loadWord() {
+  revealedIndices = [];
+  wordRevealed = false;
+  inp.value = '';
+  document.getElementById('feedback').textContent = '';
+  document.getElementById('feedback').className = 'feedback';
+  document.getElementById('hint-btn').disabled = false;
+  setWordChip(5, false);
+  const s = queue[sentenceIdx];
+  document.getElementById('decode-word').textContent = s.encodedWords[wordIdx].toUpperCase();
+  buildSlots(s.words[wordIdx].length);
+  renderSlots('');
+  inp.focus();
+}
+
+function setWordChip(pts, zeroed) {
+  const chip = document.getElementById('word-chip');
+  const val  = document.getElementById('word-val');
+  chip.className = zeroed ? 'score-chip zeroed' : 'score-chip';
+  val.textContent = zeroed ? '0 pts (revealed)' : pts + ' pts';
+}
+
+function setBonusChip(live) {
+  const chip = document.getElementById('bonus-chip');
+  chip.className = live ? 'bonus-chip bonus-live' : 'bonus-chip bonus-lost';
+  chip.innerHTML = live
+    ? 'Bonus &middot; <span>+10 no hints</span>'
+    : 'Bonus &middot; <span>lost</span>';
+}
+
+function renderSentenceDisplay() {
+  const s = queue[sentenceIdx];
+  const container = document.getElementById('sentence-display');
+  container.innerHTML = '';
+  s.encodedWords.forEach((enc, i) => {
+    const span = document.createElement('span');
+    span.id = 'sw-' + i;
+    if (skippedWords.includes(i)) {
+      span.className = 'sent-word skipped';
+      span.textContent = s.words[i].toUpperCase();
+    } else if (i < wordIdx) {
+      span.className = 'sent-word decoded';
+      span.textContent = s.words[i].toUpperCase();
+    } else if (i === wordIdx) {
+      span.className = 'sent-word current';
+      span.textContent = enc.toUpperCase();
+    } else {
+      span.className = 'sent-word pending';
+      span.textContent = enc.toUpperCase();
+    }
+    container.appendChild(span);
+  });
+}
+
+function buildSlots(n) {
+  const c = document.getElementById('letter-slots');
+  c.innerHTML = '';
+  c.className = n > 9 ? 'slots-wrap compact' : 'slots-wrap';
+  for (let i = 0; i < n; i++) {
+    const s = document.createElement('div');
+    s.className = 'letter-slot';
+    s.id = 'slot-' + i;
+    c.appendChild(s);
+  }
+}
+
+function renderSlots(typedVal, state) {
+  const s = queue[sentenceIdx];
+  const word = s.words[wordIdx];
+  const n = word.length;
+  let ti = 0;
+  for (let i = 0; i < n; i++) {
+    const el = document.getElementById('slot-' + i);
+    if (!el) continue;
+    el.innerHTML = '';
+    if (state === 'correct') {
+      el.className = 'letter-slot correct';
+      el.textContent = word[i].toUpperCase();
+    } else if (state === 'wrong') {
+      const ch = revealedIndices.includes(i) ? word[i].toUpperCase() : (typedVal && typedVal[ti++]) || '';
+      el.className = 'letter-slot wrong';
+      el.textContent = ch;
+    } else if (revealedIndices.includes(i)) {
+      el.className = 'letter-slot hinted';
+      el.textContent = word[i].toUpperCase();
+    } else {
+      const ch = (typedVal && typedVal[ti++]) || '';
+      el.className = 'letter-slot' + (ch ? ' filled' : '');
+      el.textContent = ch;
+    }
+  }
+}
+
+inp.addEventListener('input', function () {
+  const s = queue[sentenceIdx];
+  const word = s.words[wordIdx];
+  const maxLen = word.length - revealedIndices.length;
+  let val = this.value.replace(/[^a-zA-Z]/g, '').toUpperCase().slice(0, maxLen);
+  this.value = val;
+  renderSlots(val);
+  if (val.length === maxLen) setTimeout(checkAnswer, 80);
+});
+
+inp.addEventListener('keydown', function (e) {
+  if (e.key === 'Enter') checkAnswer();
+});
+
+function getFullAttempt() {
+  const s = queue[sentenceIdx];
+  const word = s.words[wordIdx];
+  const typed = inp.value.toUpperCase();
+  let ti = 0, result = '';
+  for (let i = 0; i < word.length; i++) {
+    result += revealedIndices.includes(i) ? word[i].toUpperCase() : (typed[ti++] || '');
+  }
+  return result;
+}
+
+function checkAnswer() {
+  const s = queue[sentenceIdx];
+  const word = s.words[wordIdx].toUpperCase();
+  const attempt = getFullAttempt();
+  if (attempt.length < word.length) return;
+  const fb = document.getElementById('feedback');
+
+  if (attempt === word) {
+    // word revealed by hints gets 0 pts; otherwise +5
+    const pts = wordRevealed ? 0 : 5;
+    totalScore += pts;
+    wordPtsEarned += pts;
+    document.getElementById('score-num').textContent = totalScore;
+    if (pts > 0) flashScore('green');
+
+    renderSlots(inp.value, 'correct');
+    fb.textContent = wordRevealed ? 'Revealed — 0 pts' : '+5 pts';
+    fb.className = 'feedback correct';
+    inp.value = '';
+
+    const chip = document.getElementById('sw-' + wordIdx);
+    if (chip) {
+      chip.className = wordRevealed ? 'sent-word skipped' : 'sent-word decoded';
+      chip.textContent = word;
+    }
+    wordIdx++;
+    if (wordIdx >= s.words.length) {
+      setTimeout(completeSentence, 600);
+    } else {
+      setTimeout(() => {
+        fb.textContent = '';
+        fb.className = 'feedback';
+        renderSentenceDisplay();
+        loadWord();
+      }, 450);
+    }
+  } else {
+    renderSlots(inp.value, 'wrong');
+    fb.textContent = 'Not quite — try again';
+    fb.className = 'feedback wrong';
+    setTimeout(() => {
+      inp.value = '';
+      fb.textContent = '';
+      fb.className = 'feedback';
+      renderSlots('');
+      inp.focus();
+    }, 700);
+  }
+}
+
+function completeSentence() {
+  const s = queue[sentenceIdx];
+  const bonus = (hintsUsed === 0 && skippedWords.length === 0) ? 10 : 0;
+  totalScore += bonus;
+  document.getElementById('score-num').textContent = totalScore;
+  flashScore('green');
+
+  const fb = document.getElementById('feedback');
+  if (bonus > 0) {
+    fb.textContent = '+10 bonus — perfect sentence!';
+  } else {
+    fb.textContent = 'Sentence complete!';
+  }
+  fb.className = 'feedback correct';
+
+  results.push({
+    sentence: s.words.join(' '),
+    encoded: s.encodedWords.join(' '),
+    hints: hintsUsed,
+    skipped: skippedWords.length,
+    wordPts: wordPtsEarned,
+    bonus,
+    pts: wordPtsEarned + bonus
+  });
+  setTimeout(() => { sentenceIdx++; loadSentence(); }, 1300);
+}
+
+function revealHint() {
+  const s = queue[sentenceIdx];
+  const word = s.words[wordIdx];
+  const n = word.length;
+  let pick = -1;
+  for (let i = 0; i < n; i++) {
+    if (!revealedIndices.includes(i)) { pick = i; break; }
+  }
+  if (pick === -1) return;
+  revealedIndices.push(pick);
+  hintsUsed++;
+  totalScore = Math.max(0, totalScore - 1);
+  document.getElementById('score-num').textContent = totalScore;
+  document.getElementById('hints-used').textContent = hintsUsed;
+  flashScore('amber');
+
+  // lose bonus as soon as first hint is used
+  if (hintsUsed === 1) setBonusChip(false);
+
+  const maxLen = n - revealedIndices.length;
+  if (inp.value.length > maxLen) inp.value = inp.value.slice(0, maxLen);
+
+  // all letters revealed — word is worth 0
+  if (maxLen === 0) {
+    wordRevealed = true;
+    setWordChip(0, true);
+    document.getElementById('hint-btn').disabled = true;
+  }
+
+  const fb = document.getElementById('feedback');
+  fb.textContent = '−1 point';
+  fb.className = 'feedback hint';
+  setTimeout(() => {
+    if (fb.className === 'feedback hint') { fb.textContent = ''; fb.className = 'feedback'; }
+  }, 1200);
+
+  renderSlots(inp.value);
+  inp.focus();
+  if (maxLen === 0) setTimeout(checkAnswer, 80);
+}
+
+function skipWord() {
+  const s = queue[sentenceIdx];
+  skippedWords.push(wordIdx);
+  // skipping also voids the bonus
+  setBonusChip(false);
+
+  const chip = document.getElementById('sw-' + wordIdx);
+  if (chip) {
+    chip.className = 'sent-word skipped';
+    chip.textContent = s.words[wordIdx].toUpperCase();
+  }
+  wordIdx++;
+  if (wordIdx >= s.words.length) {
+    setTimeout(completeSentence, 400);
+  } else {
+    inp.value = '';
+    document.getElementById('feedback').textContent = '';
+    document.getElementById('feedback').className = 'feedback';
+    document.getElementById('hint-btn').disabled = false;
+    renderSentenceDisplay();
+    loadWord();
+  }
+}
+
+function flashScore(color) {
+  const el = document.getElementById('score-num');
+  el.className = color === 'green' ? 'flash-green' : 'flash-amber';
+  setTimeout(() => { el.className = ''; }, 600);
+}
+
+function endGame() {
+  document.getElementById('game-area').style.display = 'none';
+  document.getElementById('end-screen').style.display = 'block';
+  document.getElementById('progress-fill').style.width = '100%';
+  const maxPts = queue.reduce((sum, s) => sum + s.words.length * 5 + 10, 0);
+  document.getElementById('final-score').textContent = totalScore + ' pts';
+  const pct = maxPts > 0 ? totalScore / maxPts : 0;
+  document.getElementById('final-label').textContent = (
+    pct === 1    ? 'Perfect — master cryptographer!' :
+    pct >= 0.8   ? 'Excellent decoding!' :
+    pct >= 0.6   ? 'Solid work — keep shifting!' :
+    pct >= 0.4   ? 'Getting the hang of it!' :
+                   'The alphabet strikes back!'
+  ) + ' (max ' + maxPts + ' pts)';
+  const list = document.getElementById('results-list');
+  list.innerHTML = '';
+  results.forEach(r => {
+    const div = document.createElement('div');
+    div.className = 'result-item';
+    let bc, bt;
+    if (r.hints === 0 && r.skipped === 0) { bc = 'badge-got'; bt = 'No hints +10'; }
+    else if (r.pts === 0) { bc = 'badge-zero'; bt = 'No pts'; }
+    else { bc = 'badge-hinted'; bt = r.hints + ' hint' + (r.hints !== 1 ? 's' : ''); }
+    div.innerHTML = `
+      <div>
+        <div class="result-word">${r.sentence.toUpperCase()}</div>
+        <div class="result-clue">${r.encoded.toUpperCase()}</div>
+      </div>
+      <div class="result-right">
+        <span class="result-pts">+${r.pts} pt${r.pts !== 1 ? 's' : ''}</span>
+        <span class="result-badge ${bc}">${bt}</span>
+      </div>`;
+    list.appendChild(div);
+  });
+}
+
+function restartGame() {
+  document.getElementById('end-screen').style.display = 'none';
+  document.getElementById('start-screen').style.display = 'block';
+}
+</script>
+</body>
+</html>

@@ -55,23 +55,23 @@ const PUZZLES = {
       { word:"grove", clue:"A small cluster of trees", letters:5 },
       { word:"elder", clue:"A shrub with white flowers and dark berries", letters:5 }
     ]},
-    { theme: "both forces of nature", chain: [
-      { word:"storm", clue:"Violent weather with strong wind and rain", letters:5 },
-      { word:"maple", clue:"A tree famous for its leaf-shaped symbol and sweet syrup", letters:5 },
-      { word:"earth", clue:"The soil beneath your feet; also our planet", letters:5 },
-      { word:"hedge", clue:"A row of closely planted shrubs forming a boundary", letters:5 },
-      { word:"ember", clue:"A glowing piece of a dying fire", letters:5 }
+    { theme: "both found by the river", chain: [
+      { word:"otter", clue:"A sleek, playful mammal that hunts fish in rivers and streams", letters:5 },
+      { word:"reed",  clue:"A tall slender grass that fringes rivers and marshes", letters:4 },
+      { word:"duck",  clue:"A waterbird with a wide flat bill and webbed feet", letters:4 },
+      { word:"kite",  clue:"A fork-tailed bird of prey that soars on thermals", letters:4 },
+      { word:"egret", clue:"A slender white wading bird that stands motionless in shallows", letters:5 }
     ]}
   ],
   7: [
-    { theme: "both found in a flower garden", chain: [
-      { word:"petal",  clue:"One of the coloured parts of a flower", letters:5 },
-      { word:"lark",   clue:"A small songbird known for soaring and singing", letters:4 },
-      { word:"kneel",  clue:"To rest your weight on one or both knees", letters:5 },
-      { word:"lemon",  clue:"A sour yellow citrus fruit", letters:5 },
-      { word:"nook",   clue:"A small hidden or sheltered corner", letters:4 },
-      { word:"knoll",  clue:"A small rounded grassy hill", letters:5 },
-      { word:"lily",   clue:"A tall flower with large trumpet-shaped blooms", letters:4 }
+    { theme: "both found in a summer meadow", chain: [
+      { word:"poppy",  clue:"A blood-red wildflower with papery petals that dots summer fields", letters:5 },
+      { word:"yarrow", clue:"A feathery-leaved wildflower with flat-topped clusters of tiny blooms", letters:6 },
+      { word:"wren",   clue:"Britain's tiniest bird, with a surprisingly loud song", letters:4 },
+      { word:"nectar", clue:"The sweet liquid bees gather from flower to flower", letters:6 },
+      { word:"rabbit", clue:"A long-eared grazer that nibbles the meadow grass at dusk", letters:6 },
+      { word:"toad",   clue:"A warty amphibian that hides in the damp corners of the meadow", letters:4 },
+      { word:"daisy",  clue:"The cheerful white flower you pick to make a chain", letters:5 }
     ]},
     { theme: "both signs of the British countryside", chain: [
       { word:"spring", clue:"The season after winter when flowers bloom", letters:6 },
