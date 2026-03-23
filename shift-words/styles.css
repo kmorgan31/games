@@ -112,7 +112,7 @@ body {
   font-size: 18px; font-weight: 700; letter-spacing: 0.14em;
   color: var(--text); font-family: 'Courier New', monospace;
 }
-.decode-sep { font-size: 14px; color: var(--text3); margin: 0 2px; }
+.decode-sep { font-size: 13px; color: var(--text3); margin: 0 2px; font-family: 'Courier New', monospace; letter-spacing: 0.04em; }
 
 /* ── LETTER SLOTS ── */
 .slots-wrap { display: flex; gap: 6px; margin-bottom: 1rem; justify-content: center; flex-wrap: wrap; }
@@ -156,13 +156,13 @@ body {
 
 /* ── HINTS ── */
 .hint-action-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
-#hint-btn {
+#hint-btn, #dir-btn {
   height: 36px; padding: 0 14px; border-radius: var(--radius);
   border: 0.5px solid var(--hint-btn-border); background: var(--hint-btn-bg);
   color: var(--hint-btn-text); font-size: 13px; font-weight: 600; cursor: pointer;
 }
-#hint-btn:hover { background: var(--hint-btn-hover); }
-#hint-btn:disabled { opacity: 0.4; cursor: default; }
+#hint-btn:hover, #dir-btn:hover { background: var(--hint-btn-hover); }
+#hint-btn:disabled, #dir-btn:disabled { opacity: 0.4; cursor: default; }
 .hint-cost { font-size: 12px; color: var(--text3); }
 .hint-cost span { color: var(--dot-a); font-weight: 600; }
 

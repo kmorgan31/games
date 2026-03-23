@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Synonym Sleuth</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- ── START SCREEN ── -->
+  <div id="start-screen">
+    <a href="../index.html" class="back-link">← All games</a>
+    <div class="game-title">Synonym Sleuth</div>
+    <div class="game-subtitle">The definition's been rephrased — name the word it describes.</div>
+
+    <div class="demo-box">
+      <div class="demo-label">Example</div>
+      <div class="demo-def">
+        <span class="swap-chip">Enduring</span> for a very <span class="swap-chip">brief</span> time
+      </div>
+      <div class="demo-answer-row">
+        <span>→</span>
+        <span class="demo-word">EPHEMERAL</span>
+        <span class="demo-unswap">enduring ↔ lasting &nbsp;·&nbsp; brief ↔ short</span>
+      </div>
+    </div>
+
+    <ul class="info-list">
+      <li>Correct answer = <strong>+10 pts</strong></li>
+      <li>Incorrect guess = <strong>−1 pt</strong></li>
+      <li>Restore one swapped word to original = <strong>−1 pt</strong></li>
+      <li>Reveal a letter in the answer = <strong>−2 pts</strong></li>
+      <li>Skip with no penalty</li>
+    </ul>
+    <button class="btn-primary" onclick="startGame()">Play</button>
+  </div>
+
+  <!-- ── GAME AREA ── -->
+  <div id="game-area" style="display:none">
+    <a href="../index.html" class="back-link">← All games</a>
+    <div class="meta-row">
+      <div class="stat-pill">Round <span id="round-num">1</span> / <span id="total-num">5</span></div>
+      <div class="stat-pill">Score <span id="score-num">0</span></div>
+    </div>
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-fill" id="progress-fill" style="width:0%"></div>
+    </div>
+    <div class="clue-card">
+      <div class="clue-header">
+        <div class="clue-label">Definition</div>
+        <div class="clue-pos" id="clue-pos"></div>
+      </div>
+      <div class="definition-text" id="definition-text"></div>
+    </div>
+    <div class="slots-wrap" id="letter-slots"></div>
+    <input id="answer-input" type="text"
+      autocomplete="off" autocorrect="off" autocapitalize="characters"
+      spellcheck="false" inputmode="text" placeholder="type your guess" />
+    <div class="actions-row">
+      <button class="btn-hint" id="restore-btn" onclick="restoreWord()">
+        Restore a word <span class="hint-cost">−1 pt</span>
+      </button>
+      <button class="btn-hint" id="reveal-btn" onclick="revealLetter()">
+        Reveal a letter <span class="hint-cost">−2 pts</span>
+      </button>
+    </div>
+    <div class="hint-meta" id="hint-meta"></div>
+    <div class="feedback" id="feedback"></div>
+    <div class="guess-row">
+      <button class="btn-guess" onclick="checkAnswer()">Guess →</button>
+    </div>
+    <div class="skip-row">
+      <button class="skip-btn" onclick="skipWord()">Skip this one →</button>
+    </div>
+  </div>
+
+  <!-- ── END SCREEN ── -->
+  <div id="end-screen" style="display:none">
+    <a href="../index.html" class="back-link">← All games</a>
+    <div class="score-big" id="final-score"></div>
+    <div class="score-label" id="final-label"></div>
+    <div class="results-list" id="results-list"></div>
+    <button class="btn-secondary" onclick="restartGame()">Play again</button>
+  </div>
+
+</div>
+<script src="puzzles.js"></script>
+<script>
+const ROUND_COUNT = 5;
+let queue, current, totalScore, results;
+let restoredSwaps, revealedLetters, wrongGuesses;
+
+function shuffle(a) {
+  const b = [...a];
+  for (let i = b.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [b[i], b[j]] = [b[j], b[i]];
+  }
+  return b;
+}
+
+const inp = document.getElementById('answer-input');
+
+inp.addEventListener('input', function () {
+  const p = queue[current]; if (!p) return;
+  const maxLen = p.word.length - revealedLetters.length;
+  let val = this.value.replace(/[^a-zA-Z]/g, '').toUpperCase().slice(0, maxLen);
+  this.value = val;
+  renderSlots(val);
+});
+
+inp.addEventListener('keydown', function (e) {
+  if (e.key === 'Enter') checkAnswer();
+});
+
+function show(id) {
+  ['start-screen', 'game-area', 'end-screen'].forEach(s => {
+    document.getElementById(s).style.display = s === id ? 'block' : 'none';
+  });
+}
+
+function startGame() {
+  queue = shuffle(PUZZLES).slice(0, ROUND_COUNT);
+  current = 0; totalScore = 0; results = [];
+  show('game-area');
+  loadPuzzle();
+}
+
+function loadPuzzle() {
+  if (current >= queue.length) { endGame(); return; }
+  restoredSwaps = [];
+  revealedLetters = [0];
+  wrongGuesses = 0;
+
+  const p = queue[current];
+  const swapCount = p.tokens.filter(t => t.orig).length;
+
+  inp.value = '';
+  inp.disabled = false;
+
+  document.getElementById('round-num').textContent = current + 1;
+  document.getElementById('total-num').textContent = queue.length;
+  document.getElementById('score-num').textContent = totalScore;
+  document.getElementById('clue-pos').textContent = p.pos;
+  document.getElementById('feedback').textContent = '';
+  document.getElementById('feedback').className = 'feedback';
+  document.getElementById('progress-fill').style.width = (current / queue.length * 100) + '%';
+  document.getElementById('hint-meta').textContent =
+    swapCount + ' word' + (swapCount !== 1 ? 's' : '') + ' swapped · ' + p.word.length + ' letters';
+
+  renderDefinition();
+  buildSlots(p.word.length);
+  renderSlots('');
+  updateHintButtons();
+  inp.focus();
+}
+
+function renderDefinition() {
+  const p = queue[current];
+  let swapIdx = 0;
+  const html = p.tokens.map(token => {
+    if (token.orig) {
+      const idx = swapIdx++;
+      const restored = restoredSwaps.includes(idx);
+      return restored
+        ? `<span class="swap-chip restored">${token.orig}</span>`
+        : `<span class="swap-chip">${token.t}</span>`;
+    }
+    return token.t;
+  }).join('');
+  document.getElementById('definition-text').innerHTML = html;
+}
+
+function buildSlots(n) {
+  const c = document.getElementById('letter-slots');
+  c.innerHTML = '';
+  c.className = n > 11 ? 'slots-wrap tiny' : n > 8 ? 'slots-wrap compact' : 'slots-wrap';
+  for (let i = 0; i < n; i++) {
+    const s = document.createElement('div');
+    s.className = 'letter-slot';
+    s.id = 'slot-' + i;
+    c.appendChild(s);
+  }
+}
+
+function renderSlots(typedVal, state) {
+  const p = queue[current], n = p.word.length;
+  let ti = 0;
+  for (let i = 0; i < n; i++) {
+    const s = document.getElementById('slot-' + i); if (!s) continue;
+    if (state === 'correct') {
+      s.className = 'letter-slot correct'; s.textContent = p.word[i];
+    } else if (state === 'wrong') {
+      const ch = revealedLetters.includes(i) ? p.word[i] : (typedVal && typedVal[ti++]) || '';
+      s.className = 'letter-slot wrong'; s.textContent = ch;
+    } else if (revealedLetters.includes(i)) {
+      s.className = 'letter-slot revealed'; s.textContent = p.word[i];
+    } else {
+      const ch = (typedVal && typedVal[ti++]) || '';
+      s.className = 'letter-slot' + (ch ? ' filled' : '');
+      s.textContent = ch;
+    }
+  }
+}
+
+function getFullAttempt() {
+  const p = queue[current], typed = inp.value.toUpperCase();
+  let ti = 0, result = '';
+  for (let i = 0; i < p.word.length; i++) {
+    result += revealedLetters.includes(i) ? p.word[i] : (typed[ti++] || '');
+  }
+  return result;
+}
+
+function updateHintButtons() {
+  const p = queue[current];
+  const totalSwaps = p.tokens.filter(t => t.orig).length;
+  document.getElementById('restore-btn').disabled = restoredSwaps.length >= totalSwaps;
+  document.getElementById('reveal-btn').disabled  = revealedLetters.length >= p.word.length;
+}
+
+function checkAnswer() {
+  const p = queue[current];
+  const attempt = getFullAttempt();
+  if (attempt.length < p.word.length) return;
+
+  const fb = document.getElementById('feedback');
+  if (attempt === p.word) {
+    totalScore += 10;
+    flashScore('green');
+    renderSlots(inp.value, 'correct');
+    fb.textContent = '+10 — got it!';
+    fb.className = 'feedback correct';
+    results.push({ word: p.word, got: true, restores: restoredSwaps.length, reveals: revealedLetters.length, wrong: wrongGuesses });
+    inp.disabled = true;
+    setTimeout(() => { current++; loadPuzzle(); }, 1000);
+  } else {
+    wrongGuesses++;
+    totalScore -= 1;
+    flashScore('red');
+    renderSlots(inp.value, 'wrong');
+    fb.textContent = 'Not quite — try again (−1 pt)';
+    fb.className = 'feedback wrong';
+    document.getElementById('score-num').textContent = totalScore;
+    setTimeout(() => {
+      inp.value = ''; fb.textContent = ''; fb.className = 'feedback';
+      renderSlots(''); inp.focus();
+    }, 700);
+  }
+}
+
+function restoreWord() {
+  const p = queue[current];
+  const swapTokens = p.tokens.filter(t => t.orig);
+  if (restoredSwaps.length >= swapTokens.length) return;
+
+  let nextIdx = -1;
+  for (let i = 0; i < swapTokens.length; i++) {
+    if (!restoredSwaps.includes(i)) { nextIdx = i; break; }
+  }
+  if (nextIdx === -1) return;
+
+  restoredSwaps.push(nextIdx);
+  totalScore -= 1;
+  document.getElementById('score-num').textContent = totalScore;
+  flashScore('amber');
+  renderDefinition();
+  updateHintButtons();
+
+  const remaining = swapTokens.length - restoredSwaps.length;
+  const fb = document.getElementById('feedback');
+  fb.textContent = remaining > 0
+    ? `Word restored — ${remaining} swap${remaining !== 1 ? 's' : ''} still hidden (−1 pt)`
+    : 'All words restored (−1 pt)';
+  fb.className = 'feedback hint';
+  clearFbSoon(fb);
+  inp.focus();
+}
+
+function revealLetter() {
+  const p = queue[current], n = p.word.length;
+  const candidates = [];
+  for (let i = 0; i < n; i++) {
+    if (!revealedLetters.includes(i)) candidates.push(i);
+  }
+  if (candidates.length === 0) return;
+
+  const pick = candidates[0];
+  revealedLetters.push(pick);
+  totalScore -= 2;
+  document.getElementById('score-num').textContent = totalScore;
+  flashScore('amber');
+
+  const maxLen = n - revealedLetters.length;
+  if (inp.value.length > maxLen) inp.value = inp.value.slice(0, maxLen);
+  renderSlots(inp.value);
+  updateHintButtons();
+
+  const fb = document.getElementById('feedback');
+  fb.textContent = 'Letter revealed (−2 pts)';
+  fb.className = 'feedback hint';
+  clearFbSoon(fb);
+  inp.focus();
+
+  if (maxLen === 0) setTimeout(checkAnswer, 80);
+}
+
+function clearFbSoon(fb) {
+  setTimeout(() => {
+    if (fb.className === 'feedback hint') { fb.textContent = ''; fb.className = 'feedback'; }
+  }, 1800);
+}
+
+function flashScore(color) {
+  const el = document.getElementById('score-num');
+  el.className = color === 'green' ? 'flash-green' : color === 'red' ? 'flash-red' : 'flash-amber';
+  setTimeout(() => { el.className = ''; }, 600);
+}
+
+function skipWord() {
+  const p = queue[current];
+  results.push({ word: p.word, got: false, restores: restoredSwaps.length, reveals: revealedLetters.length, wrong: wrongGuesses });
+  current++;
+  loadPuzzle();
+}
+
+function endGame() {
+  show('end-screen');
+  document.getElementById('final-score').textContent = totalScore + ' pts';
+  const maxPts = queue.length * 10;
+  const pct = totalScore / maxPts;
+  document.getElementById('final-label').textContent = (
+    pct >= 1    ? 'Flawless — master sleuth!' :
+    pct >= 0.8  ? 'Sharp work — excellent!' :
+    pct >= 0.6  ? 'Solid sleuth skills!' :
+    pct >= 0.4  ? 'Not bad — keep sleuthing!' :
+    pct >= 0    ? 'Tricky definitions!' :
+                  'Those synonyms got you!'
+  ) + '  (max ' + maxPts + ' pts)';
+
+  const list = document.getElementById('results-list');
+  list.innerHTML = '';
+  results.forEach(r => {
+    const div = document.createElement('div');
+    div.className = 'result-item';
+    const hints = r.restores + r.reveals;
+    let bc, bt;
+    if (!r.got)        { bc = 'badge-missed';  bt = 'Skipped'; }
+    else if (hints > 0){ bc = 'badge-hinted';  bt = hints + ' hint' + (hints !== 1 ? 's' : ''); }
+    else               { bc = 'badge-got';     bt = 'No hints'; }
+    const details = [];
+    if (r.wrong    > 0) details.push(r.wrong    + ' wrong');
+    if (r.restores > 0) details.push(r.restores + ' restore' + (r.restores !== 1 ? 's' : ''));
+    if (r.reveals  > 0) details.push(r.reveals  + ' reveal'  + (r.reveals  !== 1 ? 's' : ''));
+    div.innerHTML =
+      `<div>
+        <div class="result-word">${r.word}</div>
+        ${details.length ? '<div class="result-detail">' + details.join(' · ') + '</div>' : ''}
+      </div>
+      <div class="result-right">
+        <span class="result-pts">${r.got ? '+10 pts' : '+0'}</span>
+        <span class="result-badge ${bc}">${bt}</span>
+      </div>`;
+    list.appendChild(div);
+  });
+}
+
+function restartGame() {
+  show('start-screen');
+}
+</script>
+</body>
+</html>

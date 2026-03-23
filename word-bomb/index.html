@@ -41,24 +41,63 @@ let overReason = null;
 let feedback = null;
 let fbTimer = null;
 let freshWord = null;
+let timeLeft = 60;
+let timerInterval = null;
 
 // ═══════════════════════════════════════════════════════════
 //  HELPERS
 // ═══════════════════════════════════════════════════════════
 function shuffle(arr){return [...arr].sort(()=>Math.random()-.5)}
 
+function formatTime(s){ return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); }
+
+function startTimer(){
+  clearTimer();
+  timeLeft = 60;
+  timerInterval = setInterval(tickTimer, 1000);
+}
+
+function clearTimer(){
+  if(timerInterval){ clearInterval(timerInterval); timerInterval = null; }
+}
+
+function tickTimer(){
+  timeLeft = Math.max(0, timeLeft - 1);
+  const pct = (timeLeft / 60) * 100;
+  const wickEl = document.getElementById('wick-fill');
+  const labelEl = document.getElementById('timer-label');
+  const color = timeLeft > 30 ? '#fbbf24' : timeLeft > 10 ? '#f97316' : 'var(--red)';
+  if(wickEl){
+    wickEl.style.width = pct + '%';
+    wickEl.style.background = color;
+    wickEl.style.boxShadow = timeLeft <= 10 ? `0 0 6px ${color}` : 'none';
+  }
+  if(labelEl){
+    labelEl.textContent = formatTime(timeLeft);
+    labelEl.style.color = timeLeft <= 10 ? 'var(--red)' : timeLeft <= 30 ? '#f97316' : 'var(--text2)';
+  }
+  if(timeLeft <= 0){
+    clearTimer();
+    overReason = 'timeout';
+    setTimeout(()=>{ phase='over'; render(); }, 400);
+  }
+}
+
 function goToMenu(){
+  clearTimer();
   phase = "menu";
   render();
 }
 
 function startGame(category){
+  clearTimer();
   cat = category;
   activeBombs = shuffle(cat.bombs).slice(0, DIFFICULTY[difficulty].bombs);
   found = []; score = 0; missStreak = 0;
   overReason = null; feedback = null; freshWord = null;
   phase = "playing";
   render();
+  startTimer();
   setTimeout(()=>{
     const inp = document.getElementById("guess-input");
     if(inp) inp.focus();
@@ -185,6 +224,7 @@ function submitGuess(){
   if(isBomb){
     found.push({w:guess,bomb:true});
     overReason="bomb";
+    clearTimer();
     showFeedback({type:"bomb",word:guess});
     setTimeout(()=>{phase="over";render();},1300);
     return;
@@ -200,6 +240,7 @@ function submitGuess(){
     setTimeout(()=>{ freshWord=null; updateWordsSection(); },500);
     if(found.filter(f=>!f.bomb&&!f.miss).length === cat.words.length){
       overReason="win";
+      clearTimer();
       setTimeout(()=>{phase="over";render();},900);
     }
   } else {
@@ -213,6 +254,7 @@ function submitGuess(){
     updateGame();
     if(missStreak>=3){
       overReason="misses";
+      clearTimer();
       setTimeout(()=>{phase="over";render();},1000);
     }
   }
@@ -318,6 +360,15 @@ function renderGame(){
       </div>
     </div>
 
+    <!-- Bomb timer / wick -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r)">
+      <span style="font-size:18px;flex-shrink:0">💣</span>
+      <div style="flex:1;height:6px;background:var(--surface3);border-radius:99px;overflow:hidden">
+        <div id="wick-fill" style="height:100%;border-radius:99px;background:${timeLeft>30?'#fbbf24':timeLeft>10?'#f97316':'var(--red)'};width:${(timeLeft/60)*100}%;transition:width 1s linear;box-shadow:${timeLeft<=10?'0 0 6px var(--red)':'none'}"></div>
+      </div>
+      <span id="timer-label" style="font-size:13px;font-weight:700;font-family:var(--mono);min-width:34px;text-align:right;color:${timeLeft<=10?'var(--red)':timeLeft<=30?'#f97316':'var(--text2)'}">${formatTime(timeLeft)}</span>
+    </div>
+
     <!-- Progress -->
     <div style="margin-bottom:12px">
       <div style="display:flex;justify-content:space-between;margin-bottom:5px">
@@ -402,16 +453,18 @@ function renderGame(){
 function renderOver(){
   const won = overReason==="win";
   const isBomb = overReason==="bomb";
+  const isTimeout = overReason==="timeout";
   const validFound = found.filter(f=>!f.bomb&&!f.miss);
   const maxPossible = cat.words.reduce((s,w)=>s+w.p,0);
 
   return `
   <div class="anim-fadeup" style="text-align:center;padding:2rem 0">
-    <div style="font-size:64px;margin-bottom:10px">${won?"🏆":isBomb?"💥":"😬"}</div>
-    <h2 style="margin-bottom:8px">${won?"Board cleared!":isBomb?"Bomb triggered!":"Too many misses"}</h2>
+    <div style="font-size:64px;margin-bottom:10px">${won?"🏆":isBomb?"💥":isTimeout?"⏰":"😬"}</div>
+    <h2 style="margin-bottom:8px">${won?"Board cleared!":isBomb?"Bomb triggered!":isTimeout?"Time's up!":"Too many misses"}</h2>
     <p style="color:var(--text2);font-size:14px;line-height:1.7;margin-bottom:28px;max-width:360px;margin-left:auto;margin-right:auto">
       ${won?"You found every word without detonating a bomb.":
         isBomb?"You stepped on a trap word and the board exploded.":
+        isTimeout?"60 seconds — the fuse burned out before you finished.":
         "3 wrong guesses in a row ended your run."}
     </p>
 

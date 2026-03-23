@@ -13,7 +13,7 @@
   <div id="start-screen">
     <a href="../index.html" class="back-link">← All games</a>
     <div class="title">One-Letter Shift</div>
-    <div class="subtitle">Every letter has been nudged one step up the alphabet.<br>Shift each one back to reveal the sentence.</div>
+    <div class="subtitle">Every letter has been nudged one step — forward or backward.<br>Shift each one back to reveal the sentence.</div>
 
     <div class="demo-block">
       <div class="demo-row">
@@ -21,13 +21,14 @@
         <span class="demo-arrow">→</span>
         <span class="demo-decoded">WORLD</span>
       </div>
-      <div class="demo-note">x−1=w &nbsp;·&nbsp; p−1=o &nbsp;·&nbsp; s−1=r &nbsp;·&nbsp; m−1=l &nbsp;·&nbsp; e−1=d</div>
+      <div class="demo-note">shifted +1 &nbsp;·&nbsp; x−1=w &nbsp;·&nbsp; p−1=o &nbsp;·&nbsp; s−1=r &nbsp;·&nbsp; ···</div>
+      <div class="demo-note" style="margin-top:3px">direction varies each sentence — check the indicator in-game</div>
     </div>
 
     <div class="info-box">
       <div class="info-row"><div class="dot g"></div><span>Each decoded word = +5 pts</span></div>
       <div class="info-row"><div class="dot g"></div><span>Decode every word in a sentence with no hints = +10 bonus</span></div>
-      <div class="info-row"><div class="dot a"></div><span>Each letter hint = −1 pt immediately</span></div>
+      <div class="info-row"><div class="dot a"></div><span>Reveal direction or a letter = −1 pt each</span></div>
       <div class="info-row"><div class="dot r"></div><span>Word fully revealed by hints or skipped = 0 pts for that word</span></div>
       <div class="info-row"><div class="dot"></div><span>Wrong guesses carry no penalty — keep trying</span></div>
     </div>
@@ -50,7 +51,7 @@
     <div class="decode-card">
       <span class="decode-label">Decode</span>
       <span class="decode-word" id="decode-word"></span>
-      <span class="decode-sep">→</span>
+      <span class="decode-sep" id="decode-sep">→</span>
     </div>
 
     <div class="slots-wrap" id="letter-slots"></div>
@@ -65,8 +66,11 @@
     </div>
 
     <div class="hint-action-row">
-      <button id="hint-btn" onclick="revealHint()">Reveal next letter</button>
-      <div class="hint-cost">−1 pt per hint &middot; <span id="hints-used">0</span> used</div>
+      <div style="display:flex;gap:7px">
+        <button id="dir-btn" onclick="revealDirection()">Reveal direction</button>
+        <button id="hint-btn" onclick="revealHint()">Reveal letter</button>
+      </div>
+      <div class="hint-cost">−1 pt each &middot; <span id="hints-used">0</span> used</div>
     </div>
 
     <div class="feedback" id="feedback"></div>
@@ -89,11 +93,12 @@
 
 <script src="sentences.js"></script>
 <script>
-const ROUND_COUNT = 5;
+const ROUND_COUNT = 3;
 let queue = [], sentenceIdx = 0, totalScore = 0, results = [];
 let wordIdx = 0, hintsUsed = 0, revealedIndices = [], skippedWords = [];
 let wordRevealed = false; // true when all letters hinted out (auto-check fires, word worth 0)
 let wordPtsEarned = 0;   // running word pts for this sentence (excludes bonus)
+let dirRevealed = false;  // true once the shift direction hint has been used this sentence
 
 const inp = document.getElementById('answer-input');
 
@@ -106,8 +111,19 @@ function shuffle(a) {
   return b;
 }
 
+function shiftWord(word, dir) {
+  return word.split('').map(ch => {
+    const c = ch.charCodeAt(0);
+    if (c >= 97 && c <= 122) return String.fromCharCode(((c - 97 + dir + 26) % 26) + 97);
+    return ch;
+  }).join('');
+}
+
 function startGame() {
-  queue = shuffle(SENTENCES).slice(0, ROUND_COUNT);
+  queue = shuffle(SENTENCES).slice(0, ROUND_COUNT).map(s => {
+    const dir = Math.random() < 0.5 ? 1 : -1;
+    return { words: s.words, dir, encodedWords: s.words.map(w => shiftWord(w, dir)) };
+  });
   sentenceIdx = 0; totalScore = 0; results = [];
   document.getElementById('start-screen').style.display = 'none';
   document.getElementById('end-screen').style.display = 'none';
@@ -118,7 +134,7 @@ function startGame() {
 function loadSentence() {
   if (sentenceIdx >= queue.length) { endGame(); return; }
   wordIdx = 0; hintsUsed = 0; revealedIndices = []; skippedWords = [];
-  wordRevealed = false; wordPtsEarned = 0;
+  wordRevealed = false; wordPtsEarned = 0; dirRevealed = false;
   document.getElementById('round-num').textContent = sentenceIdx + 1;
   document.getElementById('total-num').textContent = queue.length;
   document.getElementById('score-num').textContent = totalScore;
@@ -127,6 +143,9 @@ function loadSentence() {
   document.getElementById('feedback').className = 'feedback';
   document.getElementById('progress-fill').style.width = (sentenceIdx / queue.length * 100) + '%';
   document.getElementById('hint-btn').disabled = false;
+  document.getElementById('dir-btn').disabled = false;
+  const sep = document.getElementById('decode-sep');
+  if (sep) sep.textContent = '?';
   setWordChip(5, false);
   setBonusChip(true);
   renderSentenceDisplay();
@@ -367,6 +386,31 @@ function revealHint() {
   renderSlots(inp.value);
   inp.focus();
   if (maxLen === 0) setTimeout(checkAnswer, 80);
+}
+
+function revealDirection() {
+  if (dirRevealed) return;
+  dirRevealed = true;
+  hintsUsed++;
+  totalScore = Math.max(0, totalScore - 1);
+  document.getElementById('score-num').textContent = totalScore;
+  document.getElementById('hints-used').textContent = hintsUsed;
+  document.getElementById('dir-btn').disabled = true;
+  flashScore('amber');
+
+  if (hintsUsed === 1) setBonusChip(false);
+
+  const dir = queue[sentenceIdx].dir;
+  const sep = document.getElementById('decode-sep');
+  if (sep) sep.textContent = dir === 1 ? '←' : '→';
+
+  const fb = document.getElementById('feedback');
+  fb.textContent = `Shift each letter ${dir === 1 ? '← back 1' : '→ forward 1'} to decode (−1 pt)`;
+  fb.className = 'feedback hint';
+  setTimeout(() => {
+    if (fb.className === 'feedback hint') { fb.textContent = ''; fb.className = 'feedback'; }
+  }, 2000);
+  inp.focus();
 }
 
 function skipWord() {

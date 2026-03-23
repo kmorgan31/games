@@ -179,6 +179,7 @@
 
   .tag-word { background: rgba(212,240,96,0.12); color: var(--accent); }
   .tag-film { background: rgba(249,115,22,0.12); color: #f97316; }
+  .tag-physics { background: rgba(96,200,240,0.12); color: #60c8f0; }
   .tag-coming { background: rgba(255,255,255,0.05); color: var(--text3); }
 
   .card-title {
@@ -208,13 +209,6 @@
 
   /* staggered animation */
   .game-card { animation: fadeUp 0.5s ease both; }
-  .game-card:nth-child(1) { animation-delay: 0.15s; }
-  .game-card:nth-child(2) { animation-delay: 0.22s; }
-  .game-card:nth-child(3) { animation-delay: 0.29s; }
-  .game-card:nth-child(4) { animation-delay: 0.36s; }
-  .game-card:nth-child(5) { animation-delay: 0.43s; }
-  .game-card:nth-child(6) { animation-delay: 0.50s; }
-  .game-card:nth-child(7) { animation-delay: 0.57s; }
 
   /* ── FOOTER ── */
   footer {
@@ -270,28 +264,6 @@
       <p class="card-desc">Find palindromes from clues. Hints cost points — but so does over-hinting.</p>
     </a>
 
-    <!-- Daisy Chain -->
-    <a class="game-card" href="./tag-words/">
-      <div class="card-top">
-        <span class="card-num">02</span>
-        <span class="card-arrow">↗</span>
-      </div>
-      <span class="card-tag tag-word">Word</span>
-      <div class="card-title">Daisy Chain</div>
-      <p class="card-desc">Pick a petal, pass it on. Each word blooms from the last letter of the one before.</p>
-    </a>
-
-    <!-- Word Bomb -->
-    <a class="game-card" href="./word-bomb/">
-      <div class="card-top">
-        <span class="card-num">03</span>
-        <span class="card-arrow">↗</span>
-      </div>
-      <span class="card-tag tag-word">Word</span>
-      <div class="card-title">Word Bomb</div>
-      <p class="card-desc">Find every word before the fuse burns through — one wrong guess, and it all blows up on you.</p>
-    </a>
-
     <!-- Blend Words -->
     <a class="game-card" href="./blend-words/">
       <div class="card-top">
@@ -314,6 +286,50 @@
       <p class="card-desc">Every word in the sentence has been shifted one letter up the alphabet. Shift back to decode it.</p>
     </a>
 
+    <!-- Daisy Chain -->
+    <a class="game-card" href="./tag-words/">
+      <div class="card-top">
+        <span class="card-num">02</span>
+        <span class="card-arrow">↗</span>
+      </div>
+      <span class="card-tag tag-word">Word</span>
+      <div class="card-title">Daisy Chain</div>
+      <p class="card-desc">Pick a petal, pass it on. Each word blooms from the last letter of the one before.</p>
+    </a>
+
+    <!-- Word Bomb -->
+    <a class="game-card" href="./word-bomb/">
+      <div class="card-top">
+        <span class="card-num">03</span>
+        <span class="card-arrow">↗</span>
+      </div>
+      <span class="card-tag tag-word">Word</span>
+      <div class="card-title">Word Bomb</div>
+      <p class="card-desc">Find every word before the fuse burns through — one wrong guess, and it all blows up on you.</p>
+    </a>
+
+    <!-- Synonym Sleuth -->
+    <a class="game-card" href="./synonym-sleuth/">
+      <div class="card-top">
+        <span class="card-num">08</span>
+        <span class="card-arrow">↗</span>
+      </div>
+      <span class="card-tag tag-word">Word</span>
+      <div class="card-title">Synonym Sleuth</div>
+      <p class="card-desc">A definition's been rephrased with synonyms — decode it and name the word.</p>
+    </a>
+
+    <!-- Rogue Words -->
+    <a class="game-card" href="./rogue-words/">
+      <div class="card-top">
+        <span class="card-num">09</span>
+        <span class="card-arrow">↗</span>
+      </div>
+      <span class="card-tag tag-word">Word</span>
+      <div class="card-title">Rogue Words</div>
+      <p class="card-desc">Some words have gone rogue — misspelled or swapped for a synonym. Track them down before they escape.</p>
+    </a>
+
     <!-- Marquee -->
     <a class="game-card" href="./marquee/">
       <div class="card-top">
@@ -323,6 +339,17 @@
       <span class="card-tag tag-film">Film</span>
       <div class="card-title">Marquee</div>
       <p class="card-desc">Three to five films, one star in common — name the actor before the curtain falls.</p>
+    </a>
+
+    <!-- Roll to the Hole -->
+    <a class="game-card" href="./roll-to-the-hole/">
+      <div class="card-top">
+        <span class="card-num">07</span>
+        <span class="card-arrow">↗</span>
+      </div>
+      <span class="card-tag tag-physics">Physics</span>
+      <div class="card-title">Roll to the Hole</div>
+      <p class="card-desc">Draw lines to guide the ball into the hole. Moving platforms, bouncy pads, and a limited line budget.</p>
     </a>
 
     <!-- Placeholder -->
@@ -340,5 +367,10 @@
   <span>Built in the browser</span>
 </footer>
 
+<script>
+  document.querySelectorAll('.game-card').forEach((el, i) => {
+    el.style.animationDelay = (0.15 + i * 0.07) + 's';
+  });
+</script>
 </body>
 </html>

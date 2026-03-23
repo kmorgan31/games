@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rogue Words</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- ── START SCREEN ── -->
+  <div id="start-screen">
+    <a href="../index.html" class="back-link">← All games</a>
+    <div class="game-title">Rogue Words</div>
+    <div class="game-subtitle">Some words in the sentence have gone rogue —<br>misspelled or swapped for a synonym. Hunt them down.</div>
+
+    <div class="demo-box">
+      <div class="demo-label">Example</div>
+      <div class="demo-sentence">
+        The <span class="demo-chip swapped">enormous</span> dog wagged its <span class="demo-chip misspelled">tale</span> at every stranger.
+      </div>
+      <div class="demo-reveals">
+        <div class="demo-reveal-row">
+          <span style="color:#d4a040">↔</span>
+          <strong>"enormous"</strong>
+          <span>swapped synonym — was "big"</span>
+          <span style="margin-left:auto;color:#8ecb4a;font-weight:600">+5 pts</span>
+        </div>
+        <div class="demo-reveal-row">
+          <span style="color:#e87878">✗</span>
+          <strong>"tale"</strong>
+          <span>misspelled — was "tail"</span>
+          <span style="margin-left:auto;color:#8ecb4a;font-weight:600">+5 pts</span>
+        </div>
+      </div>
+    </div>
+
+    <ul class="info-list">
+      <li>Found a rogue word = <strong>+3 pts</strong></li>
+      <li>Also correctly named misspelled or swapped = <strong>+2 pts bonus</strong></li>
+      <li>Clicked a correct word = <strong>−1 pt</strong></li>
+      <li>Hint — fades 2 correct words to eliminate them = <strong>−1 pt</strong></li>
+    </ul>
+    <button class="btn-primary" onclick="startGame()">Play</button>
+  </div>
+
+  <!-- ── GAME AREA ── -->
+  <div id="game-area" style="display:none">
+    <a href="../index.html" class="back-link">← All games</a>
+    <div class="meta-row">
+      <div class="stat-pill">Round <span id="round-num">1</span> / <span id="total-num">5</span></div>
+      <div class="stat-pill">Score <span id="score-num">0</span></div>
+    </div>
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-fill" id="progress-fill" style="width:0%"></div>
+    </div>
+
+    <div class="sentence-card">
+      <div class="sentence-label">Find the rogue words</div>
+      <div class="sentence-text" id="sentence"></div>
+    </div>
+
+    <div class="errors-row">
+      <div class="rogue-dots" id="rogue-dots"></div>
+      <div style="font-size:12px;color:var(--text3)" id="hint-meta"></div>
+    </div>
+
+    <div class="type-panel inactive" id="type-panel">
+      <div class="type-prompt" id="type-prompt">Click a word above to inspect it</div>
+      <div class="type-btns">
+        <button class="btn-type spell" onclick="submitGuess('misspelled')">Misspelled</button>
+        <button class="btn-type swap"  onclick="submitGuess('swapped')">Swapped synonym</button>
+        <button class="btn-cancel"     onclick="deselectWord()">Cancel</button>
+      </div>
+    </div>
+
+    <div class="feedback" id="feedback"></div>
+
+    <div class="actions-row" id="actions-row">
+      <button class="btn-hint" id="hint-btn" onclick="useHint()">
+        Fade 2 correct words <span class="hint-cost">−1 pt</span>
+      </button>
+    </div>
+
+    <div class="next-row" id="next-row" style="display:none">
+      <button class="btn-next" onclick="nextRound()">Next round →</button>
+    </div>
+
+    <div class="skip-row" id="skip-row">
+      <button class="skip-btn" onclick="skipRound()">Skip remaining →</button>
+    </div>
+  </div>
+
+  <!-- ── END SCREEN ── -->
+  <div id="end-screen" style="display:none">
+    <a href="../index.html" class="back-link">← All games</a>
+    <div class="score-big" id="final-score"></div>
+    <div class="score-label" id="final-label"></div>
+    <div class="results-list" id="results-list"></div>
+    <button class="btn-secondary" onclick="restartGame()">Play again</button>
+  </div>
+
+</div>
+<script src="puzzles.js"></script>
+<script>
+const ROUND_COUNT = 5;
+
+let queue, roundIdx, totalScore, roundResults;
+let selectedIdx, foundMap, fadedSet, skippedSet, wrongSet, roundStartScore, roundDone;
+
+function shuffle(a) {
+  const b = [...a];
+  for (let i = b.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [b[i], b[j]] = [b[j], b[i]];
+  }
+  return b;
+}
+
+function show(id) {
+  ['start-screen', 'game-area', 'end-screen'].forEach(s => {
+    document.getElementById(s).style.display = s === id ? 'block' : 'none';
+  });
+}
+
+function errorIndices(puzzle) {
+  return puzzle.tokens
+    .map((t, i) => (t.type ? i : -1))
+    .filter(i => i !== -1);
+}
+
+function correctUnfadedIndices(puzzle) {
+  return puzzle.tokens
+    .map((t, i) => (!t.type && !fadedSet.has(i) && !foundMap.has(i) && !wrongSet.has(i) ? i : -1))
+    .filter(i => i !== -1);
+}
+
+// ── GAME LIFECYCLE ──
+
+function startGame() {
+  queue = shuffle(PUZZLES).slice(0, ROUND_COUNT);
+  roundIdx = 0;
+  totalScore = 0;
+  roundResults = [];
+  show('game-area');
+  loadRound();
+}
+
+function loadRound() {
+  if (roundIdx >= queue.length) { endGame(); return; }
+
+  selectedIdx = null;
+  foundMap = new Map();
+  fadedSet = new Set();
+  skippedSet = new Set();
+  wrongSet = new Set();
+  roundStartScore = totalScore;
+  roundDone = false;
+
+  const puzzle = queue[roundIdx];
+  const errCount = errorIndices(puzzle).length;
+
+  document.getElementById('round-num').textContent = roundIdx + 1;
+  document.getElementById('total-num').textContent = queue.length;
+  document.getElementById('score-num').textContent = totalScore;
+  document.getElementById('progress-fill').style.width = (roundIdx / queue.length * 100) + '%';
+  document.getElementById('feedback').textContent = '';
+  document.getElementById('feedback').className = 'feedback';
+  document.getElementById('hint-meta').textContent =
+    errCount + ' rogue word' + (errCount !== 1 ? 's' : '') + ' hidden';
+  document.getElementById('next-row').style.display = 'none';
+  document.getElementById('skip-row').style.display = 'block';
+  document.getElementById('actions-row').style.display = 'flex';
+
+  renderSentence();
+  updateRogueDots();
+  updateHintButton();
+  updateTypePanel();
+}
+
+// ── RENDERING ──
+
+function renderSentence() {
+  const puzzle = queue[roundIdx];
+  const container = document.getElementById('sentence');
+  container.innerHTML = '';
+
+  puzzle.tokens.forEach((token, idx) => {
+    const span = document.createElement('span');
+    span.className = 'word';
+    span.textContent = token.w;
+    span.dataset.idx = idx;
+
+    if (foundMap.has(idx)) {
+      span.classList.add(foundMap.get(idx).full ? 'found-full' : 'found-partial');
+    } else if (skippedSet.has(idx)) {
+      span.classList.add('missed');
+    } else if (fadedSet.has(idx)) {
+      span.classList.add('faded');
+    } else if (idx === selectedIdx) {
+      span.classList.add('selected');
+    } else if (wrongSet.has(idx)) {
+      span.classList.add('wrong');
+    } else {
+      span.addEventListener('click', () => clickWord(idx));
+    }
+
+    container.appendChild(span);
+
+    if (token.post) {
+      container.appendChild(document.createTextNode(token.post));
+    }
+  });
+}
+
+function updateRogueDots() {
+  const puzzle = queue[roundIdx];
+  const errIdxs = errorIndices(puzzle);
+  const container = document.getElementById('rogue-dots');
+  container.innerHTML = '';
+  errIdxs.forEach(tokenIdx => {
+    const dot = document.createElement('div');
+    dot.className = 'rogue-dot';
+    if (foundMap.has(tokenIdx)) {
+      dot.classList.add(foundMap.get(tokenIdx).full ? 'found-full' : 'found-partial');
+    } else if (skippedSet.has(tokenIdx)) {
+      dot.classList.add('missed');
+    }
+    container.appendChild(dot);
+  });
+}
+
+function updateHintButton() {
+  const puzzle = queue[roundIdx];
+  const available = correctUnfadedIndices(puzzle);
+  document.getElementById('hint-btn').disabled = available.length < 1;
+}
+
+function updateTypePanel() {
+  const panel = document.getElementById('type-panel');
+  const prompt = document.getElementById('type-prompt');
+
+  if (selectedIdx === null) {
+    panel.classList.add('inactive');
+    prompt.innerHTML = 'Click a word above to inspect it';
+  } else {
+    panel.classList.remove('inactive');
+    const word = queue[roundIdx].tokens[selectedIdx].w;
+    prompt.innerHTML = `Is <strong>"${word}"</strong> misspelled or a swapped synonym?`;
+  }
+}
+
+// ── INTERACTION ──
+
+function clickWord(idx) {
+  if (roundDone || foundMap.has(idx) || fadedSet.has(idx) || skippedSet.has(idx) || wrongSet.has(idx)) return;
+  selectedIdx = selectedIdx === idx ? null : idx;
+  renderSentence();
+  updateTypePanel();
+}
+
+function deselectWord() {
+  selectedIdx = null;
+  renderSentence();
+  updateTypePanel();
+}
+
+function submitGuess(guessType) {
+  if (selectedIdx === null) return;
+
+  const puzzle = queue[roundIdx];
+  const token = puzzle.tokens[selectedIdx];
+  const fb = document.getElementById('feedback');
+
+  if (!token.type) {
+    // Clicked a correct word — flash it red
+    totalScore -= 1;
+    document.getElementById('score-num').textContent = totalScore;
+    flashScore('red');
+    fb.textContent = `"${token.w}" is correct — no rogue here (−1 pt)`;
+    fb.className = 'feedback wrong';
+    wrongSet.add(selectedIdx);
+    selectedIdx = null;
+    renderSentence();
+    updateTypePanel();
+    clearFbSoon(fb);
+    return;
+  }
+
+  // It's a rogue word
+  const typeCorrect = guessType === token.type;
+  const pts = typeCorrect ? 5 : 3;
+  foundMap.set(selectedIdx, { full: typeCorrect, pts });
+  totalScore += pts;
+  document.getElementById('score-num').textContent = totalScore;
+  flashScore(typeCorrect ? 'green' : 'amber');
+
+  const typeLabel = token.type === 'misspelled' ? 'misspelled' : 'a swapped synonym';
+  const wrongLabel = guessType === 'misspelled' ? 'misspelled' : 'a swapped synonym';
+
+  if (typeCorrect) {
+    fb.textContent = `+${pts} — "${token.w}" is ${typeLabel} (was "${token.orig}")`;
+    fb.className = 'feedback correct';
+  } else {
+    fb.textContent = `+${pts} — "${token.w}" is ${typeLabel} (was "${token.orig}"), not ${wrongLabel}`;
+    fb.className = 'feedback partial';
+  }
+
+  selectedIdx = null;
+  renderSentence();
+  updateTypePanel();
+  updateRogueDots();
+  updateHintButton();
+
+  const errIdxs = errorIndices(puzzle);
+  if (foundMap.size >= errIdxs.length) {
+    roundDone = true;
+    setTimeout(() => roundComplete(false), 1200);
+    return;
+  }
+
+  clearFbSoon(fb);
+}
+
+function useHint() {
+  const puzzle = queue[roundIdx];
+  const available = correctUnfadedIndices(puzzle);
+  if (available.length === 0) return;
+
+  const toFade = shuffle(available).slice(0, 2);
+  toFade.forEach(i => fadedSet.add(i));
+
+  totalScore -= 1;
+  document.getElementById('score-num').textContent = totalScore;
+  flashScore('amber');
+
+  const fb = document.getElementById('feedback');
+  fb.textContent = `${toFade.length} correct word${toFade.length !== 1 ? 's' : ''} faded out (−1 pt)`;
+  fb.className = 'feedback hint';
+
+  if (selectedIdx !== null && fadedSet.has(selectedIdx)) {
+    selectedIdx = null;
+    updateTypePanel();
+  }
+
+  renderSentence();
+  updateHintButton();
+  clearFbSoon(fb);
+}
+
+function skipRound() {
+  roundDone = true;
+  const puzzle = queue[roundIdx];
+  errorIndices(puzzle).forEach(i => {
+    if (!foundMap.has(i)) skippedSet.add(i);
+  });
+  selectedIdx = null;
+  renderSentence();
+  updateRogueDots();
+  updateTypePanel();
+  roundComplete(true);
+}
+
+function roundComplete(skipped) {
+  const puzzle = queue[roundIdx];
+  const roundPts = totalScore - roundStartScore;
+
+  roundResults.push({
+    puzzle,
+    pts: roundPts,
+    foundMap: new Map(foundMap),
+    skippedSet: new Set(skippedSet),
+    fadedSet: new Set(fadedSet)
+  });
+
+  document.getElementById('actions-row').style.display = 'none';
+  document.getElementById('next-row').style.display = 'block';
+  document.getElementById('skip-row').style.display = 'none';
+  selectedIdx = null;
+  updateTypePanel();
+
+  if (skipped) {
+    const missed = skippedSet.size;
+    const fb = document.getElementById('feedback');
+    fb.textContent = missed > 0
+      ? `${missed} rogue word${missed !== 1 ? 's' : ''} remaining — answers revealed`
+      : 'Round complete!';
+    fb.className = 'feedback hint';
+  }
+  // When not skipped, leave the last correction feedback visible
+}
+
+function nextRound() {
+  roundIdx++;
+  loadRound();
+}
+
+// ── END GAME ──
+
+function endGame() {
+  show('end-screen');
+  document.getElementById('progress-fill').style.width = '100%';
+
+  const maxPts = roundResults.reduce((sum, r) => {
+    return sum + errorIndices(r.puzzle).length * 5;
+  }, 0);
+
+  document.getElementById('final-score').textContent = totalScore + ' pts';
+  const pct = maxPts > 0 ? totalScore / maxPts : 0;
+  document.getElementById('final-label').textContent = (
+    pct >= 1   ? 'Flawless — every rogue caught!' :
+    pct >= 0.8 ? 'Sharp eyes — excellent work!' :
+    pct >= 0.6 ? 'Solid detective skills!' :
+    pct >= 0.4 ? 'The rogues put up a fight!' :
+    pct >= 0.2 ? 'They slipped past you this time.' :
+                 'The rogues ran wild!'
+  ) + '  (max ' + maxPts + ' pts)';
+
+  const list = document.getElementById('results-list');
+  list.innerHTML = '';
+
+  roundResults.forEach((r, ri) => {
+    const div = document.createElement('div');
+    div.className = 'result-round';
+
+    const errIdxs = errorIndices(r.puzzle);
+    const good = r.pts > 0;
+
+    div.innerHTML = `
+      <div class="result-round-header">
+        <div class="result-round-label">Round ${ri + 1}</div>
+        <div class="result-round-pts ${good ? 'good' : ''}">${r.pts > 0 ? '+' : ''}${r.pts} pts</div>
+      </div>
+      <div class="result-sentence" id="result-sentence-${ri}"></div>`;
+
+    list.appendChild(div);
+
+    const sentEl = div.querySelector(`#result-sentence-${ri}`);
+    r.puzzle.tokens.forEach((token, idx) => {
+      const isError = errIdxs.includes(idx);
+      const wasFound = r.foundMap.has(idx);
+      const wasMissed = r.skippedSet.has(idx);
+
+      let cls = '';
+      let title = '';
+
+      if (isError && wasFound) {
+        const { full } = r.foundMap.get(idx);
+        cls = full ? 'result-err-full' : 'result-err-partial';
+        title = `${token.type === 'misspelled' ? 'Misspelled' : 'Swapped'} — was "${token.orig}"`;
+      } else if (isError && wasMissed) {
+        cls = 'result-err-missed';
+        title = `${token.type === 'misspelled' ? 'Misspelled' : 'Swapped'} — was "${token.orig}"`;
+      }
+
+      if (cls) {
+        const span = document.createElement('span');
+        span.className = cls;
+        span.textContent = token.w;
+        span.title = title;
+        sentEl.appendChild(span);
+      } else {
+        sentEl.appendChild(document.createTextNode(token.w));
+      }
+
+      if (token.post) {
+        sentEl.appendChild(document.createTextNode(token.post));
+      }
+    });
+  });
+}
+
+function restartGame() {
+  show('start-screen');
+}
+
+// ── HELPERS ──
+
+function clearFbSoon(fb) {
+  setTimeout(() => {
+    if (fb.className !== 'feedback correct' && fb.className !== 'feedback partial') {
+      fb.textContent = '';
+      fb.className = 'feedback';
+    }
+  }, 2000);
+}
+
+function flashScore(color) {
+  const el = document.getElementById('score-num');
+  el.className = color === 'green' ? 'flash-green' : color === 'red' ? 'flash-red' : 'flash-amber';
+  setTimeout(() => { el.className = ''; }, 600);
+}
+</script>
+</body>
+</html>
